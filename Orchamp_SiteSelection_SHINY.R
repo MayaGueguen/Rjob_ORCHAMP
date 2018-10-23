@@ -47,7 +47,7 @@ FUN_SELECT_sites = function(ye, pool
                             , prob.increase.sampXYears ## fixed inputs !!
 )
 {
-  # cat(" ", ye)
+  cat(" ", ye)
   # cat("\n 1. Sites selection...")
   sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
                      , size = 1
@@ -479,10 +479,6 @@ server <- function(input, output, session) {
       geom_histogram() +
       labs(title = "Distribution des probabilités de sélection des sites") +
       theme_fivethirtyeight()
-    # par(mfrow = c(1,2))
-    # hist(RES$POOL$PROB, breaks = 1000, main = "Distribution des probabilités de sélection de chaque site", xlab = "")
-    # barplot(table(RES$SEL$SITE), las = 2, main = "Nombre d'années échantillonnées par site")
-    # abline(h = 5, lty = 2)
   })
   
   ####################################################################
@@ -513,44 +509,18 @@ server <- function(input, output, session) {
   output$plot4 = renderPlot({
     
     ## Get arguments
-    # sites.no = length(sites.names)
-    
     year.start = input$year.range[1]
     year.end = input$year.range[2]
-    
     samp.years = seq(year.start, year.end, 1)
-    # samp.no_years = length(samp.years)
     
-    # prob.increase.sampXYears = 1 + input$prob.increase.sampXYears
-    # prob.decrease.sampThisYear = 1 - input$prob.decrease.sampThisYear
-    # prob.decrease.sampSuccYears = 1 - input$prob.decrease.sampSuccYears
-    
-    # comb.ALL.vec = get_comb.ALL.vec()
+    ## Get results
     RES = get_RES()
-    
-    ##
+
     TMP = expand.grid(SITE = sites.names, YEAR = samp.years)
     TMP = merge(TMP, data.frame(RES$SEL, SAMP = 1), by = c("SITE","YEAR"), all.x = T)
     TMP$SAMP[which(is.na(TMP$SAMP))] = 0
     
-    # TMP.split = split(TMP, TMP$SITE)
-    # TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
-    # {
-    #   x$YEAR_prev = x$YEAR
-    #   for(i in 1:nrow(x))
-    #   {
-    #     if(x$SAMP[i] == 0)
-    #     {
-    #       x$YEAR_prev[i] = max(year.start, x$YEAR_prev[i-1])
-    #     }
-    #   }
-    #   x$DIFF_YEAR = c(NA, x$YEAR_prev[2:nrow(x)] - x$YEAR_prev[1:(nrow(x)-1)])
-    #   return(x[, c("SITE", "YEAR", "DIFF_YEAR")])
-    # }
-    # 
-    # TMP = merge(TMP, TMP.split, by = c("SITE","YEAR"))
-    
-    ggplot(TMP, aes(YEAR, alpha = factor(SAMP))) +#, fill = DIFF_YEAR)) +
+    ggplot(TMP, aes(YEAR, alpha = factor(SAMP))) +
       scale_alpha_discrete(guide = F, range = c(0,1)) +
       scale_fill_identity() +
       geom_bar(width = 1) +
