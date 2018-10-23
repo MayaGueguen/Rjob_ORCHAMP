@@ -60,6 +60,8 @@ sites.no = length(sites.names)
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 
+samp.sites_tab = data.frame(SITE = sites.names, LAST_YEAR = 0, NB_YEAR_SUCC = 0)
+
 
 ##' ###################################################################################################################################
 ##' # DEFINING SAMPLING FUNCTION 
@@ -116,11 +118,11 @@ FUN_SELECT_sites = function(ye, pool)
       
       ## Increase probability of sampling next year
       ## if the site has not been sampled for more than X years
-      if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
-      {
+      # if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
+      # {
         ind = grep(si, pool$COMB)
         pool$PROB[ind] = pool$PROB[ind] * prob.increase.sampXYears
-      }
+      # }
     }
   }
   
@@ -130,10 +132,10 @@ FUN_SELECT_sites = function(ye, pool)
   if(ye < year.end)
   {
     # cat("\n 3. Removal of site combinations...")
-    combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= samp.no_sites)
-    
-    pool$AVAIL = 1
-    pool$AVAIL[combiToRemove] = 0
+    # combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= samp.no_sites)
+    # 
+    # pool$AVAIL = 1
+    # pool$AVAIL[combiToRemove] = 0
     
     res_bis = FUN_SELECT_sites(ye = ye + 1, pool = pool)
     return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
@@ -231,7 +233,7 @@ HOP = foreach(samp.no_sites = params$no_sites
                 # proc.time()
                 return(data.frame(prob1,prob2,prob3,len))
               }
-save(HOP, file="HOP_a")
+save(HOP, file="HOP_b")
 
 # load("~/HOP2")
 # sum(HOP$cond.num)
