@@ -1,12 +1,21 @@
 
 ___________________________________________________________________________________________________
 
-# <font color=#52962b> <i class="fa fa-pagelines"></i> `RFate` package - to be used with `FATE-HD` </font>
+# `ORCHAMP` - Définition de la campagne d'échantillonnage
 
-### Paramètres d'entrée
+### Paramètres
+#### Donnés en entrée
+- années de départ et de fin d'échantillonnage
+- n : nombre de sites à échantillonner par année
+- contraintes d'échantillonnage
+- contraintes d'association
+- facteurs de réduction/augmentation des probabilités d'échantillonnage
+- 
 
-### Paramètres inférés à partir des paramètres d'entrée
-
+#### Inférés à partir des paramètres d'entrée
+- l'ensemble des combinaisons de n sites :
+    - moins les combinaisons ne respectant pas les contraintes d'échantillonnage
+    - moins les combinaisons ne respectant pas les contraintes d'association
 
 ### Initialisation
 - du tableau recensant pour chaque site :
