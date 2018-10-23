@@ -1,0 +1,20 @@
+"codesite";"nom";"idref";"idsite";"idinstitution";"x";"y";"dpt";"commune";"annee_install"
+"VENS";"Ventoux Sud";;14;10;5.271;44.147;"84";"Bedoin";2018
+"BON";"Bonette";;15;3;6.829;44.326;"06";"St Dalmas le Selvage";2018
+"DEV";"Devoluy Nord";;16;11;5.914;44.62;"05";"St Etienne en Dévoluy";2018
+"MON";"Devoluy Sud";;17;11;5.933;44.647;"05";"Montmaur";2018
+"NEV";"Clarée";;18;12;6.527;45.021;"05";"Névache";2018
+"PAI";"Plan de l'Aiguille";;19;6;6.903;45.92;"74";"Chamonix Mont-Blanc";2018
+"ANT";"Anterne";;1;7;6.805825;46.009245;"74";"Sixt Fer-à-Cheval";2016
+"ARG";"Argentière";;2;6;6.947277;45.985496;"74";"Chamonix Mont-Blanc";2017
+"ARM";"Armenaz";;3;4;6.228909;45.625926;"73";"Ecole";2017
+"CHAM";"Chamrousse";;4;8;5.885508;45.098692;"38";"Chamrousse";2016
+"LAU";"Lautaret";;5;9;6.405645;45.049984;"05";"Le Monétier les Bains";2017
+"LORI";"Loriaz";;6;6;6.918759;46.038079;"74";"Vallorcine";2016
+"PEC";"Peclod";;7;4;6.217314;45.638226;"73";"Ecole";2017
+"RBI";"Lauvitel";;8;1;6.066341;44.963453;"38";"Bourg d'Oisans";2017
+"RIS";"Ristolas";;9;5;7.031392;44.724622;"05";"Ristolas";2016
+"TEN";"Caramagne";;10;3;7.530017;44.131561;"06";"Tende";2017
+"VAL";"Valloire";;11;8;6.397591;45.126224;"73";"Valloire";2017
+"VAN";"Vanoise";;12;2;6.779553;45.264661;"73";"Sollières-Sardières";2017
+"VCHA";"Chaillol";;13;1;6.187555;44.721;"05";"Chaillol";2016
