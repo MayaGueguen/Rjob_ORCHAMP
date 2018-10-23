@@ -45,7 +45,7 @@ constraint.no_sites_max = 3
 
 comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
-constraint.notTogether = comb.sites.2[grep("Anterne", comb.sites.2)]
+constraint.notTogether = comb.sites.2[grep("Anterne", comb.sites.2)[1]]
 
 noXYears = 3
 noSuccYears = 3
@@ -274,6 +274,20 @@ colnames(comb.ALL.bin) = sites.names
 # RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB)
 # RES = FUN_SELECT_sites(ye = year.end-1, pool = pool.GLOB)
 RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB)
+
+SITE_table = table(RES$SEL$SITE)
+cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= 5)) == sites.no)
+
+cond.freq = TRUE
+for(ye in year.start:(year.end - 4))
+{
+  year.window = seq(ye, ye + 4)
+  cat("\n", year.window)
+  SITE_table = table(RES$SEL$SITE[which(RES$SEL$YEAR %in% year.window)])
+  cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
+  cat("\n",cond.freq)
+}
+
 
 dim(RES$SEL)
 head(RES$POOL)

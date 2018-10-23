@@ -47,7 +47,7 @@ FUN_SELECT_sites = function(ye, pool
                             , prob.increase.sampXYears ## fixed inputs !!
 )
 {
-  cat("\n\n ==> SELECTION FOR YEAR", ye)
+  # cat(" ", ye)
   # cat("\n 1. Sites selection...")
   sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
                      , size = 1
@@ -419,18 +419,35 @@ server <- function(input, output, session) {
                            , PROB = rep(1, length(comb.ALL.vec))
                            , AVAIL = rep(1, length(comb.ALL.vec)))
     
-    RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB
-                           , year.start = year.start
-                           , year.end = year.end
-                           , samp.sites_tab = samp.sites_tab
-                           , samp.no_sites = input$samp.no_sites
-                           , comb.ALL.bin = comb.ALL.bin
-                           , prob.decrease.sampThisYear = prob.decrease.sampThisYear
-                           , noSuccYears = input$noSuccYears
-                           , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
-                           , noXYears = input$noXYears
-                           , prob.increase.sampXYears = prob.increase.sampXYears
-    )
+    conditions.num_freq = FALSE
+    while(!conditions.num_freq)
+    {
+      cat("\n\n ==> SELECTION FOR YEAR")
+      RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB
+                             , year.start = year.start
+                             , year.end = year.end
+                             , samp.sites_tab = samp.sites_tab
+                             , samp.no_sites = input$samp.no_sites
+                             , comb.ALL.bin = comb.ALL.bin
+                             , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+                             , noSuccYears = input$noSuccYears
+                             , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+                             , noXYears = input$noXYears
+                             , prob.increase.sampXYears = prob.increase.sampXYears
+      )
+      # cat("\n 4. Check for number and frequency conditions...")
+      SITE_table = table(RES$SEL$SITE)
+      cond.num = (length(which(SITE_table >= 5)) == sites.no)
+      
+      cond.freq = TRUE
+      for(ye in year.start:(year.end - 4))
+      {
+        year.window = seq(ye, ye + 4)
+        SITE_table = table(RES$SEL$SITE[which(RES$SEL$YEAR %in% year.window)])
+        cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
+      }
+      if (cond.num && cond.freq) conditions.num_freq = TRUE
+    }
     RES
   })
   
@@ -516,22 +533,22 @@ server <- function(input, output, session) {
     TMP = merge(TMP, data.frame(RES$SEL, SAMP = 1), by = c("SITE","YEAR"), all.x = T)
     TMP$SAMP[which(is.na(TMP$SAMP))] = 0
     
-    TMP.split = split(TMP, TMP$SITE)
-    TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
-    {
-      x$YEAR_prev = x$YEAR
-      for(i in 1:nrow(x))
-      {
-        if(x$SAMP[i] == 0)
-        {
-          x$YEAR_prev[i] = max(year.start, x$YEAR_prev[i-1])
-        }
-      }
-      x$DIFF_YEAR = c(NA, x$YEAR_prev[2:nrow(x)] - x$YEAR_prev[1:(nrow(x)-1)])
-      return(x[, c("SITE", "YEAR", "DIFF_YEAR")])
-    }
-    
-    TMP = merge(TMP, TMP.split, by = c("SITE","YEAR"))
+    # TMP.split = split(TMP, TMP$SITE)
+    # TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
+    # {
+    #   x$YEAR_prev = x$YEAR
+    #   for(i in 1:nrow(x))
+    #   {
+    #     if(x$SAMP[i] == 0)
+    #     {
+    #       x$YEAR_prev[i] = max(year.start, x$YEAR_prev[i-1])
+    #     }
+    #   }
+    #   x$DIFF_YEAR = c(NA, x$YEAR_prev[2:nrow(x)] - x$YEAR_prev[1:(nrow(x)-1)])
+    #   return(x[, c("SITE", "YEAR", "DIFF_YEAR")])
+    # }
+    # 
+    # TMP = merge(TMP, TMP.split, by = c("SITE","YEAR"))
     
     ggplot(TMP, aes(YEAR, alpha = factor(SAMP))) +#, fill = DIFF_YEAR)) +
       scale_alpha_discrete(guide = F, range = c(0,1)) +
