@@ -47,11 +47,6 @@ comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
 constraint.notTogether = comb.sites.2[grep("Anterne", comb.sites.2)[1]]
 
-noXYears = 3
-noSuccYears = 3
-prob.increase.sampXYears = 1.01
-prob.decrease.sampThisYear = 0.99
-prob.decrease.sampSuccYears = 0.8
 
 ## --------------------------------------------------------------------------
 ## NOTHING TO CHANGE BELOW !!!
@@ -133,7 +128,7 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye, pool)
 {
-  # cat(" ", ye)
+  cat(" ", ye)
   # cat("\n 1. Sites selection...")
   sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
                      , size = 1
@@ -203,7 +198,7 @@ FUN_SELECT_sites = function(ye, pool)
     #                    , size = 1
     #                    , prob = pool$PROB[which(pool$AVAIL == 1)])
     # sites = strsplit(as.character(sites.sel), "_")[[1]]
-
+    
     ## SOLUTION 1
     # proc.time()
     # combiToRemove = foreach(mm = 4:samp.no_sites) %do%
@@ -239,13 +234,49 @@ FUN_SELECT_sites = function(ye, pool)
     # }
     # colnames(DF_sites_in_comb) = sites.names
     # head(DF_sites_in_comb)
-    combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= 4)
     
-    pool$AVAIL = 1
-    pool$AVAIL[combiToRemove] = 0
+    ## KEPT POSSIBILITY
+    # combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= samp.no_sites)
+    # 
+    # pool$AVAIL = 1
+    # pool$AVAIL[combiToRemove] = 0
+    
     
     res_bis = FUN_SELECT_sites(ye = ye + 1, pool = pool)
-    return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
+    ye = ye + 1
+    tmp = rbind(res, res_bis$SEL)
+    
+    
+    ## Evaluate results 2
+    cond.freq = TRUE
+    if (ye <= year.end - 5)
+    {
+      year.window = seq(ye, ye + 5)
+      cat("\n", year.window)
+      SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
+      print(SITE_table[order(names(SITE_table))])
+      cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
+    }
+    ## Evaluate results 1
+    cond.num = TRUE
+    if (ye == year.start + 1)
+    {
+      SITE_table = table(tmp$SITE)
+      ref = floor((year.end - year.start) / 5)
+      cat("\n", length(SITE_table))
+      cat("\n", length(which(SITE_table >= ref)))
+      cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
+    }
+    
+    if(cond.freq && cond.num)
+    {
+      return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
+    } else
+    {
+      pool$PROB = 1
+      pool$AVAIL = 1
+      return(FUN_SELECT_sites(ye = year.start, pool = pool))
+    }
   } else
   {
     return(list(SEL = res, POOL = pool))
@@ -253,6 +284,22 @@ FUN_SELECT_sites = function(ye, pool)
 }
 
 ## --------------------------------------------------------------------------
+## Transform combinations into binary matrix
+# comb.ALL.bin = foreach(si = sites.names, .combine = 'cbind') %do%
+# {
+#   sapply(comb.ALL.vec, function(x) length(grep(si, x)))
+# }
+# colnames(comb.ALL.bin) = sites.names
+
+
+
+
+
+
+
+
+
+
 ## Initialize table to store for each site :
 ##  last year of sampling
 ##  number of successive sampling
@@ -264,16 +311,27 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
                        , PROB = rep(1, length(comb.ALL.vec))
                        , AVAIL = rep(1, length(comb.ALL.vec)))
 
-## Transform combinations into binary matrix
-comb.ALL.bin = foreach(si = sites.names, .combine = 'cbind') %do%
-{
-  sapply(comb.ALL.vec, function(x) length(grep(si, x)))
-}
-colnames(comb.ALL.bin) = sites.names
-
+year.end = year.start + 7
+noXYears = 2
+noSuccYears = 2
+prob.increase.sampXYears = 1.25
+prob.decrease.sampThisYear = 0.5
+prob.decrease.sampSuccYears = 0.2
 # RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB)
-# RES = FUN_SELECT_sites(ye = year.end-1, pool = pool.GLOB)
+# RES = FUN_SELECT_sites(ye = year.end-4, pool = pool.GLOB)
 RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB)
+
+
+
+
+
+
+
+
+
+
+
+
 
 SITE_table = table(RES$SEL$SITE)
 cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= 5)) == sites.no)
