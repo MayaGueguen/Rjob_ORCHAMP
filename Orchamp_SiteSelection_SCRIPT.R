@@ -52,9 +52,6 @@ constraint.notTogether = comb.sites.2[grep("Anterne", comb.sites.2)[1]]
 ## NOTHING TO CHANGE BELOW !!!
 sites.no = length(sites.names)
 
-samp.years = seq(year.start, year.end, 1)
-samp.no_years = length(samp.years)
-
 comb.ALL = as.data.frame(t(combn(x = sites.names, m = samp.no_sites)))
 colnames(comb.ALL) = paste0("SITE_", 1:ncol(comb.ALL))
 
@@ -128,7 +125,7 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye, pool)
 {
-  cat(" ", ye)
+  # cat(" ", ye)
   # cat("\n 1. Sites selection...")
   sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
                      , size = 1
@@ -187,6 +184,7 @@ FUN_SELECT_sites = function(ye, pool)
   ## --------------------------------------------------------------------------
   ## RESULTS
   res = data.frame(YEAR = ye, SITE = sites)
+  setTxtProgressBar(prog.bar, ye - year.start + 1)
   if(ye < year.end)
   {
     # cat("\n 3. Removal of site combinations...")
@@ -252,9 +250,9 @@ FUN_SELECT_sites = function(ye, pool)
     if (ye <= year.end - 5)
     {
       year.window = seq(ye, ye + 5)
-      cat("\n", year.window)
+      # cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
-      print(SITE_table[order(names(SITE_table))])
+      # print(SITE_table[order(names(SITE_table))])
       cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
     }
     ## Evaluate results 1
@@ -263,8 +261,8 @@ FUN_SELECT_sites = function(ye, pool)
     {
       SITE_table = table(tmp$SITE)
       ref = floor((year.end - year.start) / 5)
-      cat("\n", length(SITE_table))
-      cat("\n", length(which(SITE_table >= ref)))
+      # cat("\n", length(SITE_table))
+      # cat("\n", length(which(SITE_table >= ref)))
       cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
     }
     
@@ -273,6 +271,7 @@ FUN_SELECT_sites = function(ye, pool)
       return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
     } else
     {
+      cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
       pool$PROB = 1
       pool$AVAIL = 1
       return(FUN_SELECT_sites(ye = year.start, pool = pool))
@@ -281,6 +280,7 @@ FUN_SELECT_sites = function(ye, pool)
   {
     return(list(SEL = res, POOL = pool))
   }
+  
 }
 
 ## --------------------------------------------------------------------------
@@ -311,7 +311,10 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
                        , PROB = rep(1, length(comb.ALL.vec))
                        , AVAIL = rep(1, length(comb.ALL.vec)))
 
+year.Start = 2020
 year.end = year.start + 7
+samp.years = seq(year.start, year.end, 1)
+samp.no_years = length(samp.years)
 noXYears = 2
 noSuccYears = 2
 prob.increase.sampXYears = 1.25
@@ -319,8 +322,9 @@ prob.decrease.sampThisYear = 0.5
 prob.decrease.sampSuccYears = 0.2
 # RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB)
 # RES = FUN_SELECT_sites(ye = year.end-4, pool = pool.GLOB)
-RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB)
 
+prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
+RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB)
 
 
 
