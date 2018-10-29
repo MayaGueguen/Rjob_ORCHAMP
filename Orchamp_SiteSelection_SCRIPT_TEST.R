@@ -50,9 +50,9 @@ constraint.notTogether = comb.sites.2[grep("Anterne", comb.sites.2)[1]]
 
 noXYears = 3
 noSuccYears = 3
-# prob.increase.sampXYears = 1.01
-# prob.decrease.sampThisYear = 0.99
-# prob.decrease.sampSuccYears = 0.8
+prob.increase.sampXYears = 1
+prob.decrease.sampThisYear = 1
+prob.decrease.sampSuccYears = 1
 
 ## --------------------------------------------------------------------------
 sites.no = length(sites.names)
@@ -94,7 +94,7 @@ FUN_SELECT_sites = function(ye, pool)
     if (si %in% sites)
     {
       ## Get all the combinations in which the site is present
-      ind = grep(si, pool.GLOB$COMB)
+      ind = grep(si, pool$COMB)
       
       ## Record this year as the last year of sampling
       samp.sites_tab$LAST_YEAR[ind_si] = ye
@@ -104,13 +104,13 @@ FUN_SELECT_sites = function(ye, pool)
       
       ## Reduce probability of sampling the site next year
       ## if the site has already been sampled for the last X successive years
-      # if (samp.sites_tab$NB_YEAR_SUCC[ind_si] >= noSuccYears)
-      # {
-      #   pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampSuccYears
-      # } else ## Anyway, reduce probability of sampling the site next year
-      # {
+      if (samp.sites_tab$NB_YEAR_SUCC[ind_si] >= noSuccYears)
+      {
+        pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampSuccYears
+      } else ## Anyway, reduce probability of sampling the site next year
+      {
         pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampThisYear
-      # }
+      }
     } else ## Otherwise -------------------------------------------------------
     {
       ## Keep track of number of previous successive sampling : 0
@@ -118,11 +118,11 @@ FUN_SELECT_sites = function(ye, pool)
       
       ## Increase probability of sampling next year
       ## if the site has not been sampled for more than X years
-      # if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
-      # {
+      if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
+      {
         ind = grep(si, pool$COMB)
         pool$PROB[ind] = pool$PROB[ind] * prob.increase.sampXYears
-      # }
+      }
     }
   }
   
@@ -149,24 +149,28 @@ FUN_SELECT_sites = function(ye, pool)
 ##' # NOTHING TO CHANGE BELOW !!!
 ##' ###################################################################################################################################
 
-registerDoParallel(cores = 16)
+registerDoParallel(cores = 32)
 params = expand.grid(no_sites = c(5, 6, 7)
-                     , prob1 = seq(0,1,0.1)
-                     , prob2 = seq(0,1,0.1))
-i = 1
-samp.no_sites = params$no_sites[i]
-prob1 = params$prob1[i]
-prob2 = params$prob2[i]
+                     , prob1 = seq(0,1,0.02)
+                     , prob2 = seq(0,1,0.02)
+                     , prob3 = seq(0,1,0.02))
+params = params[which(params$prob2 <= params$prob3),]
+# params = params[1:10,]
+# i = 1
+# samp.no_sites = params$no_sites[i]
+# prob1 = params$prob1[i]
+# prob2 = params$prob2[i]
 
 HOP = foreach(samp.no_sites = params$no_sites
               , prob1 = params$prob1
               , prob2 = params$prob2
+              , prob3 = params$prob3
               , .combine = 'rbind') %dopar%
               {
                 cat("\n", prob1)
                 prob.increase.sampXYears = 1 + prob1
                 prob.decrease.sampThisYear = 1 - prob2
-                prob.decrease.sampSuccYears = 1 - prob2
+                prob.decrease.sampSuccYears = 1 - prob3
                 
                 
                 comb.ALL = as.data.frame(t(combn(x = sites.names, m = samp.no_sites)))
@@ -190,26 +194,15 @@ HOP = foreach(samp.no_sites = params$no_sites
                 comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
                 
                 ## Transform combinations into binary matrix
-                comb.ALL.bin = foreach(si = sites.names, .combine = 'cbind') %do%
-                {
-                  sapply(comb.ALL.vec, function(x) length(grep(si, x)))
-                }
-                colnames(comb.ALL.bin) = sites.names
+                # comb.ALL.bin = foreach(si = sites.names, .combine = 'cbind') %do%
+                # {
+                #   sapply(comb.ALL.vec, function(x) length(grep(si, x)))
+                # }
+                # colnames(comb.ALL.bin) = sites.names
                 
                 ## --------------------------------------------------------------------------
-                ## Initialize table to store for each site :
-                ##  last year of sampling
-                ##  number of successive sampling
-                samp.sites_tab = data.frame(SITE = sites.names, LAST_YEAR = 0, NB_YEAR_SUCC = 0)
-                
-                ## Initialize table to store each possible combination of sites
-                ## and probability of each combination
-                pool.GLOB = data.frame(COMB = comb.ALL.vec
-                                       , PROB = rep(1, length(comb.ALL.vec))
-                                       , AVAIL = rep(1, length(comb.ALL.vec)))
-                
                 # proc.time()
-                len = foreach(rep = 1:3, .combine = "rbind") %do%
+                len = foreach(rep = 1:10, .combine = "rbind") %do%
                 {
                   cat(" ", rep)
                   samp.sites_tab = data.frame(SITE = sites.names, LAST_YEAR = 0, NB_YEAR_SUCC = 0)
@@ -236,5 +229,6 @@ HOP = foreach(samp.no_sites = params$no_sites
 save(HOP, file="HOP_b")
 
 # load("~/HOP2")
-# sum(HOP$cond.num)
-# sum(HOP$cond.freq)
+sum(HOP$cond.num)
+sum(HOP$cond.freq)
+length(which(HOP$cond.num == TRUE & HOP$cond.freq == TRUE))
