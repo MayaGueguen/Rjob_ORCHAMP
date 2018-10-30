@@ -203,16 +203,9 @@ FUN_SELECT_sites = function(ye, pool, samp)
   
   if(ye > year.start)
   {
-    # cat("\n 3. Removal of site combinations...")
-    ## KEPT POSSIBILITY
-    # combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= samp.no_sites)
-    # pool$AVAIL = 1
-    # pool$AVAIL[combiToRemove] = 0
-    
     res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp)
     ye = ye - 1
     tmp = rbind(res, res_bis$SEL)
-    
     
     ## Evaluate results 2
     cond.freq = TRUE
@@ -238,11 +231,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
     
     if(cond.freq && cond.num)
     {
-      # assign(paste0("sauv_annee_", ye + 1)
-      #        , value = list(SEL = rbind(res, res_bis$SEL)
-      #                       , POOL = res_bis$POOL
-      #                       , SAMP = res_bis$SAMP))
-      # save(list = paste0("sauv_annee_",ye + 1), file = paste0("SAUVEGARDE_ANNEE_", ye + 1))
       return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL, SAMP = res_bis$SAMP))
     } else
     {
@@ -250,12 +238,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
       cat("\n cond.freq ", cond.freq)
       cat("\n cond.num ", cond.num)
       cat("\n")
-      # pool$PROB = 1
-      # pool$AVAIL = 1
-      # return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
-      # new_ye = ye - 5
-      # if (new_ye == year)
-      # SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye)))
       if (ye == year.start + 5)
       {
         sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
@@ -268,15 +250,31 @@ FUN_SELECT_sites = function(ye, pool, samp)
       {
         # sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, ye)), file.remove)
         # return(FUN_SELECT_sites(ye = year.end, pool = res_bis$POOL, samp = res_bis$SAMP))
-        sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
+        # sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
         year.toKeep = seq(ye - 1, year.start)
         cat("\n YEAR TO KEEP :", year.toKeep)
-        cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+        # cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+        cat("\n RENAMED IN :", year.toKeep + 1)
         cat("\n")
-        sapply(1:length(year.toKeep), function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.toKeep[x])
-                                                              , to = paste0("SAUVEGARDE_ANNEE_", year.end - x + 1)))
+        # sapply(1:length(year.toKeep), function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.toKeep[x])
+        #                                                       , to = paste0("SAUVEGARDE_ANNEE_", year.end - x + 1)))
+        # sapply(year.toKeep, function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", x)
+        #                                             , to = paste0("SAUVEGARDE_ANNEE_", x + 1)))
         # return(FUN_SELECT_sites(ye = year.end - length(year.toKeep)
         #                         , pool = res_bis$POOL, samp = res_bis$SAMP))
+        # pool$PROB = 1
+        # pool$AVAIL = 1
+        # samp$LAST_YEAR = 0
+        # samp$NB_YEAR_SUCC = 0
+        # return(FUN_SELECT_sites(ye = ye, pool = pool, samp = samp))
+        sapply(year.toKeep, function(x)
+        {
+          file.rename(from = paste0("SAUVEGARDE_ANNEE_", x)
+                      , to = paste0("SAUVEGARDE_ANNEE_", x + 1))
+          sav = get(load(paste0("SAUVEGARDE_ANNEE_", x + 1)))
+          sav$SEL$YEAR = x + 1
+          save(sav, file = paste0("SAUVEGARDE_ANNEE_", x + 1))
+        })
       }
       pool$PROB = 1
       pool$AVAIL = 1
@@ -308,7 +306,7 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
 ## --------------------------------------------------------------------------
 
 year.start = 2020
-year.end = year.start + 8
+year.end = year.start + 7
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
