@@ -125,9 +125,9 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
 {
-  cat("\n ######################", ye, "######################\n")
+  # cat("\n ######################", ye, "######################\n")
   # cat("\n 1. Sites selection...")
-  print(head(pool))
+  # print(head(pool))
   
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye)))
   {
@@ -192,13 +192,13 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
     save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye))
   } else
   {
-    cat("\n Loading previous results...\n")
+    # cat("\n Loading previous results...\n")
     SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye)))
     res = SAV$SEL
     pool = SAV$POOL
     samp = SAV$SAMP
   }
-  print(head(pool))
+  # print(head(pool))
   
   setTxtProgressBar(prog.bar, year.end - ye + 1)
   
@@ -214,10 +214,10 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
     if (ye >= year.start + 5)
     {
       year.window = seq(ye - 5, ye)
-      cat("\n", year.window)
+      # cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
-      print(SITE_table[order(names(SITE_table))])
-      cat("\n", length(SITE_table))
+      # print(SITE_table[order(names(SITE_table))])
+      # cat("\n", length(SITE_table))
       cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
     }
     ## Evaluate results 1
@@ -226,8 +226,8 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
     {
       SITE_table = table(tmp$SITE)
       ref = floor((year.end - year.start) / 5)
-      cat("\n", length(SITE_table))
-      cat("\n", length(which(SITE_table >= ref)))
+      # cat("\n", length(SITE_table))
+      # cat("\n", length(which(SITE_table >= ref)))
       cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
     }
     
@@ -236,10 +236,10 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
       return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL, SAMP = res_bis$SAMP))
     } else
     {
-      cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
-      cat("\n cond.freq ", cond.freq)
-      cat("\n cond.num ", cond.num)
-      cat("\n")
+      # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
+      # cat("\n cond.freq ", cond.freq)
+      # cat("\n cond.num ", cond.num)
+      # cat("\n")
       if(!firstOK)
       {
         if (ye == year.start + 5)
@@ -249,9 +249,9 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
         {
           sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
           year.toKeep = seq(ye - 1, year.start)
-          cat("\n YEAR TO KEEP :", year.toKeep)
-          cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
-          cat("\n")
+          # cat("\n YEAR TO KEEP :", year.toKeep)
+          # cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+          # cat("\n")
 
           sapply(1:length(year.toKeep), function(x)
           {
@@ -331,25 +331,29 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
 
 ## --------------------------------------------------------------------------
 
+# year.start = 2020
+# year.end = year.start + 15
+sapply(list.files(pattern="SAUVEGARDE_ANNEE_"), file.remove)
 year.start = 2020
-year.end = year.start + 15
-year.end = 2027
+year.end = 2050
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
 noSuccYears = 2
 prob.increase.sampXYears = 1.25
-prob.decrease.sampThisYear = 0.5
-prob.decrease.sampSuccYears = 0.2
+prob.decrease.sampThisYear = 0.6
+prob.decrease.sampSuccYears = 0.4
 
+proc.time()
+prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
 TMP = foreach(year.start = seq(year.end - 5, 2020, -1)) %do%
 {
-  cat("\n\n ooooooooooooooooooooooooooooooooooooooooooooooo \n\n")
-  prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
+  # cat("\n\n ooooooooooooooooooooooooooooooooooooooooooooooo \n\n")
   RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
                          , firstOK = ifelse(year.start == year.end - 5, FALSE, TRUE))
   return(RES)
 }
+proc.time()
 
 TT = foreach(ye = samp.years, .combine = "rbind") %do%
 {
