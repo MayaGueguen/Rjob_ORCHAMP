@@ -132,12 +132,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
                      , prob = pool$PROB[which(pool$AVAIL == 1)])
   sites = strsplit(as.character(sites.sel), "_")[[1]]
   
-  ## If first year of sampling,
-  # if (ye == year.start)
-  # {
-  #   samp.sites_tab$LAST_YEAR = ye - 1
-  # }
-  
   ## --------------------------------------------------------------------------
   ## FOR ALL AVAILABLE SITES
   # cat("\n 2. Update of site informations...")
@@ -150,9 +144,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
     {
       ## Get all the combinations in which the site is present
       ind = grep(si, pool.GLOB$COMB)
-      
-      ## Record this year as the last year of sampling
-      # samp.sites_tab$LAST_YEAR[ind_si] = ye
       
       ## Keep track of number of previous successive sampling : +1
       samp$NB_YEAR_SUCC[ind_si] = samp$NB_YEAR_SUCC[ind_si] + 1
@@ -176,7 +167,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
       
       ## Increase probability of sampling next year
       ## if the site has not been sampled for more than X years
-      # if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
       if(samp$LAST_YEAR[ind_si] > noXYears)
       {
         ind = grep(si, pool$COMB)
@@ -188,63 +178,15 @@ FUN_SELECT_sites = function(ye, pool, samp)
   ## --------------------------------------------------------------------------
   ## RESULTS
   res = data.frame(YEAR = ye, SITE = sites)
-  # assign(paste0("sauv_annee_",ye), value = list(SEL = res, POOL = pool, SAMP = samp.sites_tab))
-  # save(list = paste0("sauv_annee_",ye), file = paste0("SAUVEGARDE_ANNEE_", ye))
   setTxtProgressBar(prog.bar, year.end - ye + 1)
+  
   if(ye > year.start)
   {
     # cat("\n 3. Removal of site combinations...")
-    # pool.GLOB = data.frame(COMB = comb.ALL.vec
-    #                        , PROB = rep(1, length(comb.ALL.vec))
-    #                        , AVAIL = rep(1, length(comb.ALL.vec)))
-    # pool = pool.GLOB
-    # sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
-    #                    , size = 1
-    #                    , prob = pool$PROB[which(pool$AVAIL == 1)])
-    # sites = strsplit(as.character(sites.sel), "_")[[1]]
-    
-    ## SOLUTION 1
-    # proc.time()
-    # combiToRemove = foreach(mm = 4:samp.no_sites) %do%
-    # {
-    #   combi = as.data.frame(t(combn(x = sites, m = 3)))
-    #   colnames(combi) = paste0("SITE_", 1:ncol(combi))
-    #   inds = apply(combi, 1, function(x) {
-    #     inds = sapply(x, function(y) grep(y, comb.ALL.vec))
-    #     ind_inter = intersect(inds[[1]], inds[[2]])
-    #     ind_inter = intersect(ind_inter, inds[[3]])
-    #     return(ind_inter)
-    #   })
-    #   return(unique(unlist(inds)))
-    # }
-    # combiToRemove = unique(unlist(combiToRemove))
-    # proc.time()
-    # 
-    # ## SOLUTION 2
-    # proc.time()
-    # nb.si.inComb = sapply(comb.ALL.vec, function(x)
-    # {
-    #   tmp = sapply(sites, function(y) regexpr(y,x))
-    #   tmp = ifelse(tmp > (-1), 1, 0)
-    #   sum(tmp)
-    # })
-    # combiToRemove = which(nb.si.inComb >= 4)
-    # proc.time()
-    
-    ## SOLUTION 3
-    # DF_sites_in_comb = foreach(si = sites.names, .combine = 'cbind') %do%
-    # {
-    #   sapply(comb.ALL.vec, function(x) length(grep(si, x)))
-    # }
-    # colnames(DF_sites_in_comb) = sites.names
-    # head(DF_sites_in_comb)
-    
     ## KEPT POSSIBILITY
     # combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= samp.no_sites)
-    # 
     # pool$AVAIL = 1
     # pool$AVAIL[combiToRemove] = 0
-    
     
     res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp)
     ye = ye - 1
@@ -253,10 +195,8 @@ FUN_SELECT_sites = function(ye, pool, samp)
     
     ## Evaluate results 2
     cond.freq = TRUE
-    # if (ye <= year.end - 5)
     if (ye >= year.start + 5)
     {
-      # year.window = seq(ye, ye + 5)
       year.window = seq(ye - 5, ye)
       cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
@@ -265,7 +205,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
     }
     ## Evaluate results 1
     cond.num = TRUE
-    # if (ye == year.start + 1)
     if (ye == year.end - 1)
     {
       SITE_table = table(tmp$SITE)
@@ -298,22 +237,6 @@ FUN_SELECT_sites = function(ye, pool, samp)
 }
 
 ## --------------------------------------------------------------------------
-## Transform combinations into binary matrix
-# comb.ALL.bin = foreach(si = sites.names, .combine = 'cbind') %do%
-# {
-#   sapply(comb.ALL.vec, function(x) length(grep(si, x)))
-# }
-# colnames(comb.ALL.bin) = sites.names
-
-
-
-
-
-
-
-
-
-
 ## Initialize table to store for each site :
 ##  last year of sampling
 ##  number of successive sampling
@@ -326,12 +249,10 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
                        , AVAIL = rep(1, length(comb.ALL.vec)))
 
 
-
+## --------------------------------------------------------------------------
 
 year.start = 2020
 year.end = year.start + 7
-# year.end = 2020
-# year.start = year.end + 7
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
@@ -339,8 +260,6 @@ noSuccYears = 2
 prob.increase.sampXYears = 1.25
 prob.decrease.sampThisYear = 0.5
 prob.decrease.sampSuccYears = 0.2
-# RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB)
-# RES = FUN_SELECT_sites(ye = year.end-4, pool = pool.GLOB)
 
 prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
 RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab)
@@ -352,6 +271,8 @@ RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab)
 
 
 
+##' ###################################################################################################################################
+##' ###################################################################################################################################
 
 
 
