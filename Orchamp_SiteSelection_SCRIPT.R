@@ -244,9 +244,11 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
       {
         if (ye == year.start + 5)
         {
+          # cat("\n\n 1 PAAAAAAAAAAAASTEQUE \n\n")
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
         } else
         {
+          # cat("\n\n 2 MELOOOOOOOOOOOOOOON \n\n")
           sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
           year.toKeep = seq(ye - 1, year.start)
           # cat("\n YEAR TO KEEP :", year.toKeep)
@@ -268,6 +270,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
         }
       } else
       {
+        # cat("\n 3 AVOOOCAAAAAAT \n")
         # if (ye == year.start + 5)
         # {
           sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
