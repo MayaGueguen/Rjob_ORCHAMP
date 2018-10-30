@@ -123,7 +123,7 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ##' ###################################################################################################################################
 
 ## Apply sampling function for each required year
-FUN_SELECT_sites = function(ye, pool, samp)
+FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
 {
   cat("\n ######################", ye, "######################\n")
   # cat("\n 1. Sites selection...")
@@ -182,12 +182,14 @@ FUN_SELECT_sites = function(ye, pool, samp)
     ## --------------------------------------------------------------------------
     ## RESULTS
     res = data.frame(YEAR = ye, SITE = sites)
-    assign(paste0("sauv_annee_", ye)
-           , value = list(SEL = res
-                          , POOL = pool
-                          , SAMP = samp))
-    save(list = paste0("sauv_annee_", ye),
-         file = paste0("SAUVEGARDE_ANNEE_", ye))
+    # assign(paste0("sauv_annee_", ye)
+    #        , value = list(SEL = res
+    #                       , POOL = pool
+    #                       , SAMP = samp))
+    # save(list = paste0("sauv_annee_", ye),
+    #      file = paste0("SAUVEGARDE_ANNEE_", ye))
+    SAV = list(SEL = res, POOL = pool, SAMP = samp)
+    save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye))
   } else
   {
     cat("\n Loading previous results...\n")
@@ -203,7 +205,7 @@ FUN_SELECT_sites = function(ye, pool, samp)
   
   if(ye > year.start)
   {
-    res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp)
+    res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK)
     ye = ye - 1
     tmp = rbind(res, res_bis$SEL)
     
@@ -238,49 +240,73 @@ FUN_SELECT_sites = function(ye, pool, samp)
       cat("\n cond.freq ", cond.freq)
       cat("\n cond.num ", cond.num)
       cat("\n")
-      if (ye == year.start + 5)
+      if(!firstOK)
       {
-        sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
-        # pool$PROB = 1
-        # pool$AVAIL = 1
-        # samp$LAST_YEAR = 0
-        # samp$NB_YEAR_SUCC = 0
-        # return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
+        if (ye == year.start + 5)
+        {
+          sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
+        } else
+        {
+          sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
+          year.toKeep = seq(ye - 1, year.start)
+          cat("\n YEAR TO KEEP :", year.toKeep)
+          cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+          cat("\n")
+
+          sapply(1:length(year.toKeep), function(x)
+          {
+            year.prev = year.toKeep[x]
+            year.new = year.end - x + 1
+            file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.prev)
+                        , to = paste0("SAUVEGARDE_ANNEE_", year.new))
+            SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.new)))
+            SAV$SEL$YEAR = year.new
+            save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.new))
+          })
+          
+          firstOK = TRUE
+        }
       } else
       {
-        # sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, ye)), file.remove)
-        # return(FUN_SELECT_sites(ye = year.end, pool = res_bis$POOL, samp = res_bis$SAMP))
-        # sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
-        year.toKeep = seq(ye - 1, year.start)
-        cat("\n YEAR TO KEEP :", year.toKeep)
-        # cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
-        cat("\n RENAMED IN :", year.toKeep + 1)
-        cat("\n")
-        # sapply(1:length(year.toKeep), function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.toKeep[x])
-        #                                                       , to = paste0("SAUVEGARDE_ANNEE_", year.end - x + 1)))
-        # sapply(year.toKeep, function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", x)
-        #                                             , to = paste0("SAUVEGARDE_ANNEE_", x + 1)))
-        # return(FUN_SELECT_sites(ye = year.end - length(year.toKeep)
-        #                         , pool = res_bis$POOL, samp = res_bis$SAMP))
-        # pool$PROB = 1
-        # pool$AVAIL = 1
-        # samp$LAST_YEAR = 0
-        # samp$NB_YEAR_SUCC = 0
-        # return(FUN_SELECT_sites(ye = ye, pool = pool, samp = samp))
-        sapply(year.toKeep, function(x)
-        {
-          file.rename(from = paste0("SAUVEGARDE_ANNEE_", x)
-                      , to = paste0("SAUVEGARDE_ANNEE_", x + 1))
-          sav = get(load(paste0("SAUVEGARDE_ANNEE_", x + 1)))
-          sav$SEL$YEAR = x + 1
-          save(sav, file = paste0("SAUVEGARDE_ANNEE_", x + 1))
-        })
+        # if (ye == year.start + 5)
+        # {
+          sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
+        # } else
       }
+      # if (ye == year.start + 5)
+      # {
+      #   sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
+      # } else
+      # {
+      #   # sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, ye)), file.remove)
+      #   # return(FUN_SELECT_sites(ye = year.end, pool = res_bis$POOL, samp = res_bis$SAMP))
+      #   
+      #   sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
+      #   year.toKeep = seq(ye - 1, year.start)
+      #   cat("\n YEAR TO KEEP :", year.toKeep)
+      #   cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+      #   # cat("\n RENAMED IN :", year.toKeep + 1)
+      #   cat("\n")
+      #   # sapply(1:length(year.toKeep), function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.toKeep[x])
+      #   #                                                       , to = paste0("SAUVEGARDE_ANNEE_", year.end - x + 1)))
+      #   # sapply(year.toKeep, function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", x)
+      #   #                                             , to = paste0("SAUVEGARDE_ANNEE_", x + 1)))
+      #   sapply(1:length(year.toKeep), function(x)
+      #   {
+      #     year.prev = year.toKeep[x]
+      #     year.new = year.end - x + 1
+      #     file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.prev)
+      #                 , to = paste0("SAUVEGARDE_ANNEE_", year.new))
+      #     SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.new)))
+      #     SAV$SEL$YEAR = year.new
+      #     save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.new))
+      #   })
+      # }
       pool$PROB = 1
       pool$AVAIL = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
-      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
+      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp, firstOK = firstOK))
       
     }
   } else
@@ -306,7 +332,8 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
 ## --------------------------------------------------------------------------
 
 year.start = 2020
-year.end = year.start + 7
+year.end = year.start + 15
+year.end = 2027
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
@@ -315,8 +342,14 @@ prob.increase.sampXYears = 1.25
 prob.decrease.sampThisYear = 0.5
 prob.decrease.sampSuccYears = 0.2
 
-prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
-RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab)
+TMP = foreach(year.start = seq(year.end - 5, 2020, -1)) %do%
+{
+  cat("\n\n ooooooooooooooooooooooooooooooooooooooooooooooo \n\n")
+  prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
+  RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
+                         , firstOK = ifelse(year.start == year.end - 5, FALSE, TRUE))
+  return(RES)
+}
 
 TT = foreach(ye = samp.years, .combine = "rbind") %do%
 {
@@ -324,11 +357,15 @@ TT = foreach(ye = samp.years, .combine = "rbind") %do%
   return(sav$SEL)
 }
 table(TT$YEAR)
-barplot(table(TT$SITE))
 
+tab1 = table(TT$SITE)
+tab1 = tab1[order(names(tab1))]
+tab2 = table(TMP[[length(TMP)]]$SEL$SITE)
+tab2 = tab2[order(names(tab2))]
 
-
-
+par(mfrow = c(2, 1))
+barplot(tab1, las = 2)
+barplot(tab2, las = 2)
 
 
 
