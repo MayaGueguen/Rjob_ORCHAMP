@@ -45,9 +45,10 @@ FUN_SELECT_sites = function(ye, pool
                             , prob.decrease.sampSuccYears ## fixed inputs !!
                             , noXYears ## fixed inputs !!
                             , prob.increase.sampXYears ## fixed inputs !!
+                            , prog.bar ## fixed inputs !!
 )
 {
-  cat(" ", ye)
+  # cat(" ", ye)
   # cat("\n 1. Sites selection...")
   sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
                      , size = 1
@@ -106,13 +107,15 @@ FUN_SELECT_sites = function(ye, pool
   ## --------------------------------------------------------------------------
   ## RESULTS
   res = data.frame(YEAR = ye, SITE = sites)
+  setProgress(value = ye - year.start + 1, detail = paste("Année", ye))
+  # setTxtProgressBar(prog.bar, ye - year.start + 1)
   if(ye < year.end)
   {
     # cat("\n 3. Removal of site combinations...")
-    combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= 4)
-    
-    pool$AVAIL = 1
-    pool$AVAIL[combiToRemove] = 0
+    # combiToRemove = which(colSums(t(comb.ALL.bin[, sites])) >= 4)
+    # 
+    # pool$AVAIL = 1
+    # pool$AVAIL[combiToRemove] = 0
     
     res_bis = FUN_SELECT_sites(ye = ye + 1, pool = pool
                                , year.start = year.start
@@ -125,8 +128,66 @@ FUN_SELECT_sites = function(ye, pool
                                , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
                                , noXYears = noXYears
                                , prob.increase.sampXYears = prob.increase.sampXYears
+                               , prog.bar = prog.bar
     )
-    return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
+    
+    ## EVALUATION OF RESULTS
+    ye = ye + 1
+    cond.freq = cond.num = TRUE
+    ref = floor((year.end - year.start) / 5)
+    res_tmp = rbind(res, res_bis$SEL)
+    
+    ## Frequency ?
+    if (ye <= year.end - 5)
+    {
+      year.window = seq(ye, ye + 5)
+      SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
+      cond.freq = (length(SITE_table) == nrow(samp.sites_tab) && length(which(SITE_table >= 1)) == nrow(samp.sites_tab))
+    }
+    ## Total number ?
+    if (ye == year.start + 1)
+    {
+      SITE_table = table(res_tmp$SITE)
+      cond.num = (length(SITE_table) == nrow(samp.sites_tab) && length(which(SITE_table >= ref)) == nrow(samp.sites_tab))
+    }
+    
+    if(cond.freq && cond.num)
+    {
+      return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
+    } else
+    {
+      cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
+      pool$PROB = 1
+      pool$AVAIL = 1
+      return(FUN_SELECT_sites(ye = year.start, pool = pool
+                              , year.start = year.start
+                              , year.end = year.end
+                              , samp.sites_tab = samp.sites_tab
+                              , samp.no_sites = samp.no_sites
+                              , comb.ALL.bin = comb.ALL.bin
+                              , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+                              , noSuccYears = noSuccYears
+                              , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+                              , noXYears = noXYears
+                              , prob.increase.sampXYears = prob.increase.sampXYears
+                              , prog.bar = prog.bar
+      ))
+    }
+    
+    
+    # res_bis = FUN_SELECT_sites(ye = ye + 1, pool = pool
+    #                            , year.start = year.start
+    #                            , year.end = year.end
+    #                            , samp.sites_tab = samp.sites_tab
+    #                            , samp.no_sites = samp.no_sites
+    #                            , comb.ALL.bin = comb.ALL.bin
+    #                            , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+    #                            , noSuccYears = noSuccYears
+    #                            , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+    #                            , noXYears = noXYears
+    #                            , prob.increase.sampXYears = prob.increase.sampXYears
+    # )
+    # return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
   } else
   {
     return(list(SEL = res, POOL = pool))
@@ -156,16 +217,20 @@ ui <- fluidPage(
                     , label = "Années d'échantillonnage :"
                     , min = 2020
                     , max = 2080
-                    , value = c(2020, 2050)
+                    , value = c(2020, 2027)
                     , sep = ""
         ),
         
         numericInput(inputId = "samp.no_sites"
                      , label = "Nombre de sites / an :"
-                     , min = 5
-                     , max = 7
-                     , value = 5
+                     , min = 6
+                     , max = 6
+                     , value = 6
                      , step = 1
+                     # , min = 5
+                     # , max = 7
+                     # , value = 5
+                     # , step = 1
         )
       ),
       
@@ -247,7 +312,7 @@ ui <- fluidPage(
                     , selected = constraint.notTogether
                     , multiple = TRUE
         )
-      ),
+        ),
       
       ## ----------------------------------------------------------
       wellPanel(
@@ -260,10 +325,14 @@ ui <- fluidPage(
         
         numericInput(inputId = "prob.decrease.sampThisYear"
                      , label = "Diminution après échantillonnage (%) :"
-                     , min = 0
-                     , max = 1
-                     , value = 0.01
+                     , min = 0.5
+                     , max = 0.5
+                     , value = 0.5
                      , step = 0.1
+                     # , min = 0
+                     # , max = 1
+                     # , value = 0.01
+                     # , step = 0.1
         ),
         
         fluidRow(
@@ -272,9 +341,13 @@ ui <- fluidPage(
                  numericInput(inputId = "noXYears"
                               , label = "Seuil d'années sans échantillonnage :"
                               , min = 2
-                              , max = 5
-                              , value = 3
+                              , max = 2
+                              , value = 2
                               , step = 1
+                              # , min = 2
+                              # , max = 5
+                              # , value = 3
+                              # , step = 1
                  )
           ),
           column(6,
@@ -282,9 +355,13 @@ ui <- fluidPage(
                  numericInput(inputId = "noSuccYears"
                               , label = "Seuil d'années d'échantillonnage successif :"
                               , min = 2
-                              , max = 5
-                              , value = 3
+                              , max = 2
+                              , value = 2
                               , step = 1
+                              # , min = 2
+                              # , max = 5
+                              # , value = 3
+                              # , step = 1
                  )
           )
         ),
@@ -294,20 +371,28 @@ ui <- fluidPage(
                  "",
                  numericInput(inputId = "prob.increase.sampXYears"
                               , label = "Augmentation après seuil (%) :"
-                              , min = 0
-                              , max = 1
-                              , value = 0.01
+                              , min = 0.25
+                              , max = 0.25
+                              , value = 0.25
                               , step = 0.1
+                              # , min = 0
+                              # , max = 1
+                              # , value = 0.01
+                              # , step = 0.1
                  )
           ),
           column(6,
                  "",
                  numericInput(inputId = "prob.decrease.sampSuccYears"
                               , label = "Diminution après seuil (%) :"
-                              , min = 0
-                              , max = 1
-                              , value = 0.2
+                              , min = 0.8
+                              , max = 0.8
+                              , value = 0.8
                               , step = 0.1
+                              # , min = 0
+                              # , max = 1
+                              # , value = 0.2
+                              # , step = 0.1
                  )
           )
         )
@@ -317,6 +402,9 @@ ui <- fluidPage(
     # Output
     mainPanel(
       submitButton("Update View", icon("refresh")),
+      # wellPanel("CONSOLE",style = "overflow-y:scroll; max-height: 600px",
+      #           verbatimTextOutput("CONSOLE")
+      # ),
       br(),
       
       tabsetPanel(
@@ -332,7 +420,8 @@ ui <- fluidPage(
                           , plotOutput(outputId = "plot2")
                    )
                  )
-                 , withSpinner(plotlyOutput(outputId = "plot3"), type = 1)
+                 # , withSpinner(plotlyOutput(outputId = "plot3"), type = 1)
+                 , withSpinner(plotOutput(outputId = "plot3"), type = 1)
                  , plotOutput(outputId = "plot4"))
       )
     )
@@ -392,20 +481,20 @@ server <- function(input, output, session) {
   get_RES = reactive({
     
     ## Get arguments
-    sites.no = length(sites.names)
+    # sites.no = length(sites.names)
     
     year.start = input$year.range[1]
     year.end = input$year.range[2]
     
-    samp.years = seq(year.start, year.end, 1)
-    samp.no_years = length(samp.years)
-    
     prob.increase.sampXYears = 1 + input$prob.increase.sampXYears
     prob.decrease.sampThisYear = 1 - input$prob.decrease.sampThisYear
     prob.decrease.sampSuccYears = 1 - input$prob.decrease.sampSuccYears
+    # cat("\n", prob.increase.sampXYears)
+    # cat("\n", prob.decrease.sampThisYear)
+    # cat("\n", prob.decrease.sampSuccYears)
     
     comb.ALL.vec = get_comb.ALL.vec()
-    comb.ALL.bin = get_comb.ALL.bin()
+    # comb.ALL.bin = get_comb.ALL.bin()
     
     ## --------------------------------------------------------------------------
     ## Initialize table to store for each site :
@@ -419,10 +508,13 @@ server <- function(input, output, session) {
                            , PROB = rep(1, length(comb.ALL.vec))
                            , AVAIL = rep(1, length(comb.ALL.vec)))
     
-    conditions.num_freq = FALSE
-    while(!conditions.num_freq)
-    {
-      cat("\n\n ==> SELECTION FOR YEAR")
+    # conditions.num_freq = FALSE
+    # while(!conditions.num_freq)
+    # {
+      # cat("\n\n ==> SELECTION FOR YEAR")
+    withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
+                 , min = 0, max = year.end - year.start + 1, {
+      # cat("\n\n ==> CALCUL DE L'ECHANTILLONNAGE EN COURS \n")
       RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB
                              , year.start = year.start
                              , year.end = year.end
@@ -434,22 +526,29 @@ server <- function(input, output, session) {
                              , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
                              , noXYears = input$noXYears
                              , prob.increase.sampXYears = prob.increase.sampXYears
+                             , prog.bar = txtProgressBar(min = 0, max = year.end - year.start + 1, style = 3)
       )
+    })
       # cat("\n 4. Check for number and frequency conditions...")
-      SITE_table = table(RES$SEL$SITE)
-      cond.num = (length(which(SITE_table >= 5)) == sites.no)
-      
-      cond.freq = TRUE
-      for(ye in year.start:(year.end - 4))
-      {
-        year.window = seq(ye, ye + 4)
-        SITE_table = table(RES$SEL$SITE[which(RES$SEL$YEAR %in% year.window)])
-        cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
-      }
-      if (cond.num && cond.freq) conditions.num_freq = TRUE
-    }
+    #   SITE_table = table(RES$SEL$SITE)
+    #   cond.num = (length(which(SITE_table >= 5)) == sites.no)
+    #   
+    #   cond.freq = TRUE
+    #   for(ye in year.start:(year.end - 4))
+    #   {
+    #     year.window = seq(ye, ye + 4)
+    #     SITE_table = table(RES$SEL$SITE[which(RES$SEL$YEAR %in% year.window)])
+    #     cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
+    #   }
+    #   if (cond.num && cond.freq) conditions.num_freq = TRUE
+    # }
     RES
   })
+  
+  ####################################################################
+  # output$CONSOLE = renderPrint({
+  #   RES = get_RES()
+  # })
   
   ####################################################################
   output$RES_SEL = renderDataTable({
@@ -494,15 +593,15 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
-  output$plot3 = renderPlotly({
+  output$plot3 = renderPlot({ #renderPlotly({
     RES = get_RES()
     
-    p = ggplot(RES$SEL, aes(YEAR, fill = SITE)) +
+    ggplot(RES$SEL, aes(YEAR, fill = SITE)) +
       scale_fill_discrete("") +
       geom_density(alpha = 0.1) +
       labs(title = "Densité d'échantillonnage par site au cours du temps") +
       theme_fivethirtyeight()
-    ggplotly(p)
+    # ggplotly(p)
   })
   
   ####################################################################
@@ -515,7 +614,7 @@ server <- function(input, output, session) {
     
     ## Get results
     RES = get_RES()
-
+    
     TMP = expand.grid(SITE = sites.names, YEAR = samp.years)
     TMP = merge(TMP, data.frame(RES$SEL, SAMP = 1), by = c("SITE","YEAR"), all.x = T)
     TMP$SAMP[which(is.na(TMP$SAMP))] = 0

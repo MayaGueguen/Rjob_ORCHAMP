@@ -250,9 +250,9 @@ FUN_SELECT_sites = function(ye, pool)
     if (ye <= year.end - 5)
     {
       year.window = seq(ye, ye + 5)
-      # cat("\n", year.window)
+      cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
-      # print(SITE_table[order(names(SITE_table))])
+      print(SITE_table[order(names(SITE_table))])
       cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
     }
     ## Evaluate results 1
@@ -261,8 +261,8 @@ FUN_SELECT_sites = function(ye, pool)
     {
       SITE_table = table(tmp$SITE)
       ref = floor((year.end - year.start) / 5)
-      # cat("\n", length(SITE_table))
-      # cat("\n", length(which(SITE_table >= ref)))
+      cat("\n", length(SITE_table))
+      cat("\n", length(which(SITE_table >= ref)))
       cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
     }
     
@@ -312,7 +312,7 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
                        , AVAIL = rep(1, length(comb.ALL.vec)))
 
 year.Start = 2020
-year.end = year.start + 7
+year.end = year.start + 20
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
