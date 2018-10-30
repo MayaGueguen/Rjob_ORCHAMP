@@ -125,60 +125,81 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye, pool, samp)
 {
-  # cat(" ", ye)
+  cat("\n ######################", ye, "######################\n")
   # cat("\n 1. Sites selection...")
-  sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
-                     , size = 1
-                     , prob = pool$PROB[which(pool$AVAIL == 1)])
-  sites = strsplit(as.character(sites.sel), "_")[[1]]
+  print(head(pool))
   
-  ## --------------------------------------------------------------------------
-  ## FOR ALL AVAILABLE SITES
-  # cat("\n 2. Update of site informations...")
-  for(si in samp$SITE)
+  if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye)))
   {
-    ind_si = which(samp$SITE == si)
+    sites.sel = sample(x = pool$COMB[which(pool$AVAIL == 1)]
+                       , size = 1
+                       , prob = pool$PROB[which(pool$AVAIL == 1)])
+    sites = strsplit(as.character(sites.sel), "_")[[1]]
     
-    ## Is the site selected this year ? ---------------------------------------
-    if (si %in% sites)
+    ## --------------------------------------------------------------------------
+    ## FOR ALL AVAILABLE SITES
+    # cat("\n 2. Update of site informations...")
+    for(si in samp$SITE)
     {
-      ## Get all the combinations in which the site is present
-      ind = grep(si, pool.GLOB$COMB)
+      ind_si = which(samp$SITE == si)
       
-      ## Keep track of number of previous successive sampling : +1
-      samp$NB_YEAR_SUCC[ind_si] = samp$NB_YEAR_SUCC[ind_si] + 1
-      
-      ## Reduce probability of sampling the site next year
-      ## if the site has already been sampled for the last X successive years
-      if (samp$NB_YEAR_SUCC[ind_si] >= noSuccYears)
+      ## Is the site selected this year ? ---------------------------------------
+      if (si %in% sites)
       {
-        pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampSuccYears
-      } else ## Anyway, reduce probability of sampling the site next year
+        ## Get all the combinations in which the site is present
+        ind = grep(si, pool.GLOB$COMB)
+        
+        ## Keep track of number of previous successive sampling : +1
+        samp$NB_YEAR_SUCC[ind_si] = samp$NB_YEAR_SUCC[ind_si] + 1
+        
+        ## Reduce probability of sampling the site next year
+        ## if the site has already been sampled for the last X successive years
+        if (samp$NB_YEAR_SUCC[ind_si] >= noSuccYears)
+        {
+          pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampSuccYears
+        } else ## Anyway, reduce probability of sampling the site next year
+        {
+          pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampThisYear
+        }
+      } else ## Otherwise -------------------------------------------------------
       {
-        pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampThisYear
-      }
-    } else ## Otherwise -------------------------------------------------------
-    {
-      ## Keep track of last year of sampling : +1
-      samp$LAST_YEAR[ind_si] = samp$LAST_YEAR[ind_si] + 1
-      
-      ## Keep track of number of previous successive sampling : 0
-      samp$NB_YEAR_SUCC[ind_si] = 0
-      
-      ## Increase probability of sampling next year
-      ## if the site has not been sampled for more than X years
-      if(samp$LAST_YEAR[ind_si] > noXYears)
-      {
-        ind = grep(si, pool$COMB)
-        pool$PROB[ind] = pool$PROB[ind] * prob.increase.sampXYears
+        ## Keep track of last year of sampling : +1
+        samp$LAST_YEAR[ind_si] = samp$LAST_YEAR[ind_si] + 1
+        
+        ## Keep track of number of previous successive sampling : 0
+        samp$NB_YEAR_SUCC[ind_si] = 0
+        
+        ## Increase probability of sampling next year
+        ## if the site has not been sampled for more than X years
+        if(samp$LAST_YEAR[ind_si] > noXYears)
+        {
+          ind = grep(si, pool$COMB)
+          pool$PROB[ind] = pool$PROB[ind] * prob.increase.sampXYears
+        }
       }
     }
+    
+    ## --------------------------------------------------------------------------
+    ## RESULTS
+    res = data.frame(YEAR = ye, SITE = sites)
+    assign(paste0("sauv_annee_", ye)
+           , value = list(SEL = res
+                          , POOL = pool
+                          , SAMP = samp))
+    save(list = paste0("sauv_annee_", ye),
+         file = paste0("SAUVEGARDE_ANNEE_", ye))
+  } else
+  {
+    cat("\n Loading previous results...\n")
+    SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye)))
+    res = SAV$SEL
+    pool = SAV$POOL
+    samp = SAV$SAMP
   }
+  print(head(pool))
   
-  ## --------------------------------------------------------------------------
-  ## RESULTS
-  res = data.frame(YEAR = ye, SITE = sites)
   setTxtProgressBar(prog.bar, year.end - ye + 1)
+  
   
   if(ye > year.start)
   {
@@ -201,6 +222,7 @@ FUN_SELECT_sites = function(ye, pool, samp)
       cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
       print(SITE_table[order(names(SITE_table))])
+      cat("\n", length(SITE_table))
       cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
     }
     ## Evaluate results 1
@@ -216,18 +238,52 @@ FUN_SELECT_sites = function(ye, pool, samp)
     
     if(cond.freq && cond.num)
     {
-      assign(paste0("sauv_annee_", ye + 1)
-             , value = list(SEL = rbind(res, res_bis$SEL)
-                            , POOL = res_bis$POOL
-                            , SAMP = res_bis$SAMP))
-      save(list = paste0("sauv_annee_",ye + 1), file = paste0("SAUVEGARDE_ANNEE_", ye + 1))
+      # assign(paste0("sauv_annee_", ye + 1)
+      #        , value = list(SEL = rbind(res, res_bis$SEL)
+      #                       , POOL = res_bis$POOL
+      #                       , SAMP = res_bis$SAMP))
+      # save(list = paste0("sauv_annee_",ye + 1), file = paste0("SAUVEGARDE_ANNEE_", ye + 1))
       return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL, SAMP = res_bis$SAMP))
     } else
     {
       cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
+      cat("\n cond.freq ", cond.freq)
+      cat("\n cond.num ", cond.num)
+      cat("\n")
+      # pool$PROB = 1
+      # pool$AVAIL = 1
+      # return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
+      # new_ye = ye - 5
+      # if (new_ye == year)
+      # SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye)))
+      if (ye == year.start + 5)
+      {
+        sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
+        # pool$PROB = 1
+        # pool$AVAIL = 1
+        # samp$LAST_YEAR = 0
+        # samp$NB_YEAR_SUCC = 0
+        # return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
+      } else
+      {
+        # sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, ye)), file.remove)
+        # return(FUN_SELECT_sites(ye = year.end, pool = res_bis$POOL, samp = res_bis$SAMP))
+        sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
+        year.toKeep = seq(ye - 1, year.start)
+        cat("\n YEAR TO KEEP :", year.toKeep)
+        cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+        cat("\n")
+        sapply(1:length(year.toKeep), function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.toKeep[x])
+                                                              , to = paste0("SAUVEGARDE_ANNEE_", year.end - x + 1)))
+        # return(FUN_SELECT_sites(ye = year.end - length(year.toKeep)
+        #                         , pool = res_bis$POOL, samp = res_bis$SAMP))
+      }
       pool$PROB = 1
       pool$AVAIL = 1
+      samp$LAST_YEAR = 0
+      samp$NB_YEAR_SUCC = 0
       return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
+      
     }
   } else
   {
@@ -252,7 +308,7 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
 ## --------------------------------------------------------------------------
 
 year.start = 2020
-year.end = year.start + 7
+year.end = year.start + 8
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
@@ -264,6 +320,13 @@ prob.decrease.sampSuccYears = 0.2
 prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
 RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab)
 
+TT = foreach(ye = samp.years, .combine = "rbind") %do%
+{
+  sav = get(load(paste0("SAUVEGARDE_ANNEE_",ye)))
+  return(sav$SEL)
+}
+table(TT$YEAR)
+barplot(table(TT$SITE))
 
 
 
