@@ -123,7 +123,7 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ##' ###################################################################################################################################
 
 ## Apply sampling function for each required year
-FUN_SELECT_sites = function(ye, pool)
+FUN_SELECT_sites = function(ye, pool, samp)
 {
   # cat(" ", ye)
   # cat("\n 1. Sites selection...")
@@ -133,17 +133,17 @@ FUN_SELECT_sites = function(ye, pool)
   sites = strsplit(as.character(sites.sel), "_")[[1]]
   
   ## If first year of sampling,
-  if (ye == year.start)
-  {
-    samp.sites_tab$LAST_YEAR = ye - 1
-  }
+  # if (ye == year.start)
+  # {
+  #   samp.sites_tab$LAST_YEAR = ye - 1
+  # }
   
   ## --------------------------------------------------------------------------
   ## FOR ALL AVAILABLE SITES
   # cat("\n 2. Update of site informations...")
-  for(si in samp.sites_tab$SITE)
+  for(si in samp$SITE)
   {
-    ind_si = which(samp.sites_tab$SITE == si)
+    ind_si = which(samp$SITE == si)
     
     ## Is the site selected this year ? ---------------------------------------
     if (si %in% sites)
@@ -152,14 +152,14 @@ FUN_SELECT_sites = function(ye, pool)
       ind = grep(si, pool.GLOB$COMB)
       
       ## Record this year as the last year of sampling
-      samp.sites_tab$LAST_YEAR[ind_si] = ye
+      # samp.sites_tab$LAST_YEAR[ind_si] = ye
       
       ## Keep track of number of previous successive sampling : +1
-      samp.sites_tab$NB_YEAR_SUCC[ind_si] = samp.sites_tab$NB_YEAR_SUCC[ind_si] + 1
+      samp$NB_YEAR_SUCC[ind_si] = samp$NB_YEAR_SUCC[ind_si] + 1
       
       ## Reduce probability of sampling the site next year
       ## if the site has already been sampled for the last X successive years
-      if (samp.sites_tab$NB_YEAR_SUCC[ind_si] >= noSuccYears)
+      if (samp$NB_YEAR_SUCC[ind_si] >= noSuccYears)
       {
         pool$PROB[ind] = pool$PROB[ind] * prob.decrease.sampSuccYears
       } else ## Anyway, reduce probability of sampling the site next year
@@ -168,12 +168,16 @@ FUN_SELECT_sites = function(ye, pool)
       }
     } else ## Otherwise -------------------------------------------------------
     {
+      ## Keep track of last year of sampling : +1
+      samp$LAST_YEAR[ind_si] = samp$LAST_YEAR[ind_si] + 1
+      
       ## Keep track of number of previous successive sampling : 0
-      samp.sites_tab$NB_YEAR_SUCC[ind_si] = 0
+      samp$NB_YEAR_SUCC[ind_si] = 0
       
       ## Increase probability of sampling next year
       ## if the site has not been sampled for more than X years
-      if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
+      # if((ye - samp.sites_tab$LAST_YEAR[ind_si]) > noXYears)
+      if(samp$LAST_YEAR[ind_si] > noXYears)
       {
         ind = grep(si, pool$COMB)
         pool$PROB[ind] = pool$PROB[ind] * prob.increase.sampXYears
@@ -184,8 +188,10 @@ FUN_SELECT_sites = function(ye, pool)
   ## --------------------------------------------------------------------------
   ## RESULTS
   res = data.frame(YEAR = ye, SITE = sites)
-  setTxtProgressBar(prog.bar, ye - year.start + 1)
-  if(ye < year.end)
+  # assign(paste0("sauv_annee_",ye), value = list(SEL = res, POOL = pool, SAMP = samp.sites_tab))
+  # save(list = paste0("sauv_annee_",ye), file = paste0("SAUVEGARDE_ANNEE_", ye))
+  setTxtProgressBar(prog.bar, year.end - ye + 1)
+  if(ye > year.start)
   {
     # cat("\n 3. Removal of site combinations...")
     # pool.GLOB = data.frame(COMB = comb.ALL.vec
@@ -240,16 +246,18 @@ FUN_SELECT_sites = function(ye, pool)
     # pool$AVAIL[combiToRemove] = 0
     
     
-    res_bis = FUN_SELECT_sites(ye = ye + 1, pool = pool)
-    ye = ye + 1
+    res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp)
+    ye = ye - 1
     tmp = rbind(res, res_bis$SEL)
     
     
     ## Evaluate results 2
     cond.freq = TRUE
-    if (ye <= year.end - 5)
+    # if (ye <= year.end - 5)
+    if (ye >= year.start + 5)
     {
-      year.window = seq(ye, ye + 5)
+      # year.window = seq(ye, ye + 5)
+      year.window = seq(ye - 5, ye)
       cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
       print(SITE_table[order(names(SITE_table))])
@@ -257,7 +265,8 @@ FUN_SELECT_sites = function(ye, pool)
     }
     ## Evaluate results 1
     cond.num = TRUE
-    if (ye == year.start + 1)
+    # if (ye == year.start + 1)
+    if (ye == year.end - 1)
     {
       SITE_table = table(tmp$SITE)
       ref = floor((year.end - year.start) / 5)
@@ -268,17 +277,22 @@ FUN_SELECT_sites = function(ye, pool)
     
     if(cond.freq && cond.num)
     {
-      return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL))
+      assign(paste0("sauv_annee_", ye + 1)
+             , value = list(SEL = rbind(res, res_bis$SEL)
+                            , POOL = res_bis$POOL
+                            , SAMP = res_bis$SAMP))
+      save(list = paste0("sauv_annee_",ye + 1), file = paste0("SAUVEGARDE_ANNEE_", ye + 1))
+      return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL, SAMP = res_bis$SAMP))
     } else
     {
       cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
       pool$PROB = 1
       pool$AVAIL = 1
-      return(FUN_SELECT_sites(ye = year.start, pool = pool))
+      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp))
     }
   } else
   {
-    return(list(SEL = res, POOL = pool))
+    return(list(SEL = res, POOL = pool, SAMP = samp))
   }
   
 }
@@ -311,8 +325,13 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
                        , PROB = rep(1, length(comb.ALL.vec))
                        , AVAIL = rep(1, length(comb.ALL.vec)))
 
-year.Start = 2020
-year.end = year.start + 20
+
+
+
+year.start = 2020
+year.end = year.start + 7
+# year.end = 2020
+# year.start = year.end + 7
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
@@ -324,7 +343,7 @@ prob.decrease.sampSuccYears = 0.2
 # RES = FUN_SELECT_sites(ye = year.end-4, pool = pool.GLOB)
 
 prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
-RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB)
+RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab)
 
 
 
