@@ -46,11 +46,11 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
                             , prob.increase.sampXYears ## fixed inputs !!
 )
 {
-  cat(" ", ye)
+  # cat(" ", ye)
   
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye)))
   {
-    cat("\n 1. Sites selection...")
+    # cat("\n 1. Sites selection...")
     sites.sel = sample(x = pool$COMB
                        , size = 1
                        , prob = pool$PROB)
@@ -58,7 +58,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     
     ## --------------------------------------------------------------------------
     ## FOR ALL AVAILABLE SITES
-    cat("\n 2. Update of site informations...")
+    # cat("\n 2. Update of site informations...")
     for(si in samp$SITE)
     {
       ind_si = which(samp$SITE == si)
@@ -234,14 +234,14 @@ ui <- fluidPage(
         
         numericInput(inputId = "samp.no_sites"
                      , label = "Nombre de sites / an :"
-                     , min = 6
-                     , max = 6
-                     , value = 6
-                     , step = 1
-                     # , min = 5
-                     # , max = 7
-                     # , value = 5
+                     # , min = 6
+                     # , max = 6
+                     # , value = 6
                      # , step = 1
+                     , min = 5
+                     , max = 7
+                     , value = 5
+                     , step = 1
         )
       ),
       
@@ -492,6 +492,8 @@ server <- function(input, output, session) {
   get_RES = reactive({
     
     ## Get arguments
+    sites.no = length(sites.names)
+    
     year.start = input$year.range[1]
     year.end = input$year.range[2]
     samp.years = seq(year.start, year.end, 1)
@@ -514,52 +516,63 @@ server <- function(input, output, session) {
     pool.GLOB = data.frame(COMB = comb.ALL.vec
                            , PROB = rep(1, length(comb.ALL.vec)))
     
+    ## REMOVE previous results
+    sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+    
+    ## --------------------------------------------------------------------------
     # conditions.num_freq = FALSE
     # while(!conditions.num_freq)
     # {
-    # cat("\n\n ==> SELECTION FOR YEAR")
-    withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
-                 , min = 0, max = year.end - year.start + 1, {
-                   # cat("\n\n ==> CALCUL DE L'ECHANTILLONNAGE EN COURS \n")
-                   # ye.start = year.end - 5
-                   RES = foreach(ye.start = seq(year.end - 5, year.start, -1)) %do%
-                   {
-                     RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
-                                            , firstOK = ifelse(ye.start == year.end - 5, FALSE, TRUE)
-                                            , year.start = ye.start
-                                            , year.end = year.end
-                                            , samp.no_sites = input$samp.no_sites
-                                            , comb.ALL.bin = comb.ALL.bin
-                                            , prob.decrease.sampThisYear = prob.decrease.sampThisYear
-                                            , noSuccYears = input$noSuccYears
-                                            , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
-                                            , noXYears = input$noXYears
-                                            , prob.increase.sampXYears = prob.increase.sampXYears
-                     )
-                     return(RES)
-                   }
-                 })
-    # cat("\n 4. Check for number and frequency conditions...")
+      withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
+                   , min = 0, max = year.end - year.start + 1, {
+                     # cat("\n\n ==> CALCUL DE L'ECHANTILLONNAGE EN COURS \n")
+                     RES = foreach(ye.start = seq(year.end + 1 - 5, year.start, -1)) %do%
+                     {
+                       RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
+                                              , firstOK = ifelse(ye.start == year.end - 5, FALSE, TRUE)
+                                              , year.start = ye.start
+                                              , year.end = year.end
+                                              , samp.no_sites = input$samp.no_sites
+                                              , comb.ALL.bin = comb.ALL.bin
+                                              , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+                                              , noSuccYears = input$noSuccYears
+                                              , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+                                              , noXYears = input$noXYears
+                                              , prob.increase.sampXYears = prob.increase.sampXYears
+                       )
+                       return(RES)
+                     }
+                   })
+      ## LOAD the correct RES
+      SEL = foreach(ye = samp.years, .combine = "rbind") %do%
+      {
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_",ye)))
+        return(SAV$SEL)
+      }
+      load(paste0("SAUVEGARDE_ANNEE_",year.start))
+      RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
+      
+    #   # cat("\n 4. Check for number and frequency conditions...")
     #   SITE_table = table(RES$SEL$SITE)
-    #   cond.num = (length(which(SITE_table >= 5)) == sites.no)
+    #   ref = floor((year.end - year.start) / 5)
+    #   cat("\n", length(SITE_table))
+    #   cat("\n", length(which(SITE_table >= ref)))
+    #   cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
     #   
     #   cond.freq = TRUE
-    #   for(ye in year.start:(year.end - 4))
+    #   for(ye in year.start:(year.end - 5))
     #   {
-    #     year.window = seq(ye, ye + 4)
+    #     year.window = seq(ye, ye + 5)
     #     SITE_table = table(RES$SEL$SITE[which(RES$SEL$YEAR %in% year.window)])
+    #     # print(SITE_table[order(names(SITE_table))])
+    #     # cat("\n", length(SITE_table))
     #     cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
     #   }
     #   if (cond.num && cond.freq) conditions.num_freq = TRUE
+    #   cat("\n\n cond.num ", cond.num)
+    #   cat("\n\n cond.freq ", cond.freq)
     # }
-    # RES[[length(RES)]]
-    SEL = foreach(ye = samp.years, .combine = "rbind") %do%
-    {
-      SAV = get(load(paste0("SAUVEGARDE_ANNEE_",ye)))
-      return(SAV$SEL)
-    }
-    load(paste0("SAUVEGARDE_ANNEE_",year.start))
-    RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
+
     return(RES)
   })
   
@@ -604,7 +617,7 @@ server <- function(input, output, session) {
     
     ggplot(RES$SEL, aes(SITE)) +
       geom_bar() +
-      geom_hline(yintercept = 5, lty = 2) +
+      geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5), lty = 2) +
       labs(title = "Nombre d'années échantillonnées par site") +
       theme_fivethirtyeight() +
       theme(axis.text.x = element_text(angle = 90))
