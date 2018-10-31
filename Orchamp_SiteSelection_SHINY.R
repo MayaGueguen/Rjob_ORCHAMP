@@ -138,10 +138,10 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     if (ye >= year.start + (test.win - 1))
     {
       year.window = seq(ye - (test.win - 1), ye)
-      cat("\n", year.window)
+      # cat("\n", year.window)
       SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
-      print(SITE_table[order(names(SITE_table))])
-      cat("\n", length(SITE_table))
+      # print(SITE_table[order(names(SITE_table))])
+      # cat("\n", length(SITE_table))
       cond.freq = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= 1)) == nrow(samp))
     }
     ## Total number ?
@@ -431,7 +431,18 @@ ui <- fluidPage(
     
     # Output
     mainPanel(
-      submitButton("Update View", icon("refresh")),
+      fluidRow(
+          column(6
+                 , ""
+                 , submitButton("Lancer calcul", icon("refresh"))
+          ),
+          column(6
+                 , ""
+                 ,  actionButton("doCleaning", "Effacer résultats")
+          )
+      ),
+      # 
+      # actionButton("doCleaning", "Effacer résultats")
       # wellPanel("CONSOLE",style = "overflow-y:scroll; max-height: 600px",
       #           verbatimTextOutput("CONSOLE")
       # ),
@@ -440,19 +451,22 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Sites sélectionnés", dataTableOutput(outputId = "RES_SEL")), 
         tabPanel("Graphiques",
-                 fluidRow(
-                   column(6
-                          , ""
-                          , withSpinner(plotOutput(outputId = "plot1"), type = 4)
-                   ),
-                   column(6
-                          , ""
-                          , plotOutput(outputId = "plot2")
-                   )
-                 )
+                 # fluidRow(
+                 #   column(6
+                 #          , ""
+                 #          , withSpinner(plotOutput(outputId = "plot2"), type = 4)
+                 #   ),
+                 #   column(6
+                 #          , ""
+                 #          , withSpinner(plotOutput(outputId = "plot3"), type = 4)
+                 #   )
+                 # )
                  # , withSpinner(plotlyOutput(outputId = "plot3"), type = 1)
-                 , withSpinner(plotOutput(outputId = "plot3"), type = 1)
-                 , plotOutput(outputId = "plot4"))
+                 # , withSpinner(plotOutput(outputId = "plot3"), type = 1)
+                 withSpinner(plotOutput(outputId = "plot2"), type = 4)
+                 , withSpinner(plotOutput(outputId = "plot4"), type = 1)
+                 # , plotOutput(outputId = "plot4"))
+        )
       )
     )
         )
@@ -495,6 +509,16 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
+  get_clean = reactive({
+    ## REMOVE previous results
+    sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+  })
+  
+  observeEvent(input$doCleaning, {
+    get_clean()
+  })
+  
+  ####################################################################
   # get_comb.ALL.bin = reactive({
   #   comb.ALL.vec = get_comb.ALL.vec()
   #   
@@ -523,7 +547,6 @@ server <- function(input, output, session) {
     prob.decrease.sampSuccYears = 1 - input$prob.decrease.sampSuccYears
     
     comb.ALL.vec = get_comb.ALL.vec()
-    # comb.ALL.bin = get_comb.ALL.bin()
     
     ## --------------------------------------------------------------------------
     ## Initialize table to store for each site :
@@ -536,74 +559,41 @@ server <- function(input, output, session) {
     pool.GLOB = data.frame(COMB = comb.ALL.vec
                            , PROB = rep(1, length(comb.ALL.vec)))
     
-    ## REMOVE previous results
-    sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+    get_clean()
     
     ## --------------------------------------------------------------------------
-    # conditions.num_freq = FALSE
-    # while(!conditions.num_freq)
-    # {
-      withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
-                   , min = 0, max = year.end - year.start + 1, {
-                     # cat("\n\n ==> CALCUL DE L'ECHANTILLONNAGE EN COURS \n")
-                     RES = foreach(ye.start = seq(year.end - (year.win - 1), year.start, -1)) %do%
-                     {
-                       cat("\n\n ooooooooooooooooooooooooooooooooooo \n")
-                       cat("\n", ye.start)
-                       cat("\n")
-                       RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
-                                              , firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
-                                              , year.start = ye.start
-                                              , year.end = year.end
-                                              , samp.no_sites = input$samp.no_sites
-                                              , prob.decrease.sampThisYear = prob.decrease.sampThisYear
-                                              , noSuccYears = input$noSuccYears
-                                              , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
-                                              , noXYears = input$noXYears
-                                              , prob.increase.sampXYears = prob.increase.sampXYears
-                                              , test.ref = floor((year.end - ye.start) / year.win)
-                                              , test.win = year.win
-                       )
-                       return(RES)
-                     }
-                   })
-      ## LOAD the correct RES
-      SEL = foreach(ye = samp.years, .combine = "rbind") %do%
-      {
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_",ye)))
-        return(SAV$SEL)
-      }
-      load(paste0("SAUVEGARDE_ANNEE_",year.start))
-      RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
-      
-    #   # cat("\n 4. Check for number and frequency conditions...")
-    #   SITE_table = table(RES$SEL$SITE)
-    #   ref = floor((year.end - year.start) / 5)
-    #   cat("\n", length(SITE_table))
-    #   cat("\n", length(which(SITE_table >= ref)))
-    #   cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
-    #   
-    #   cond.freq = TRUE
-    #   for(ye in year.start:(year.end - 5))
-    #   {
-    #     year.window = seq(ye, ye + 5)
-    #     SITE_table = table(RES$SEL$SITE[which(RES$SEL$YEAR %in% year.window)])
-    #     # print(SITE_table[order(names(SITE_table))])
-    #     # cat("\n", length(SITE_table))
-    #     cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
-    #   }
-    #   if (cond.num && cond.freq) conditions.num_freq = TRUE
-    #   cat("\n\n cond.num ", cond.num)
-    #   cat("\n\n cond.freq ", cond.freq)
-    # }
-
+    withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
+                 , min = 0, max = year.end - year.start + 1, {
+                   RES = foreach(ye.start = seq(year.end - (year.win - 1), year.start, -1)) %do%
+                   {
+                     cat(" ", ye.start)
+                     RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
+                                            , firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
+                                            , year.start = ye.start
+                                            , year.end = year.end
+                                            , samp.no_sites = input$samp.no_sites
+                                            , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+                                            , noSuccYears = input$noSuccYears
+                                            , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+                                            , noXYears = input$noXYears
+                                            , prob.increase.sampXYears = prob.increase.sampXYears
+                                            , test.ref = floor((year.end - ye.start) / year.win)
+                                            , test.win = year.win
+                     )
+                     return(RES)
+                   }
+                 })
+    ## LOAD the correct RES
+    SEL = foreach(ye = samp.years, .combine = "rbind") %do%
+    {
+      SAV = get(load(paste0("SAUVEGARDE_ANNEE_",ye)))
+      return(SAV$SEL)
+    }
+    load(paste0("SAUVEGARDE_ANNEE_",year.start))
+    RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
+    
     return(RES)
   })
-  
-  ####################################################################
-  # output$CONSOLE = renderPrint({
-  #   RES = get_RES()
-  # })
   
   ####################################################################
   output$RES_SEL = renderDataTable({
@@ -620,24 +610,26 @@ server <- function(input, output, session) {
     rownames(RES) = names(RES.split)
     RES
   })
+  
   output$RES_POOL = renderDataTable({
     RES = get_RES()
     RES$POOL
   })
   
   ####################################################################
-  output$plot1 = renderPlot({
-    RES = get_RES()
-    
-    ggplot(RES$POOL, aes(PROB)) +
-      geom_histogram() +
-      labs(title = "Distribution des probabilités de sélection des sites") +
-      theme_fivethirtyeight()
-  })
+  # output$plot1 = renderPlot({
+  #   RES = get_RES()
+  #   
+  #   ggplot(RES$POOL, aes(PROB)) +
+  #     geom_histogram() +
+  #     labs(title = "Distribution des probabilités de sélection des sites") +
+  #     theme_fivethirtyeight()
+  # })
   
   ####################################################################
   output$plot2 = renderPlot({
     RES = get_RES()
+    RES$SEL$SITE = as.character(RES$SEL$SITE)
     
     ggplot(RES$SEL, aes(SITE)) +
       geom_bar() +
@@ -648,16 +640,16 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
-  output$plot3 = renderPlot({ #renderPlotly({
-    RES = get_RES()
-    
-    ggplot(RES$SEL, aes(YEAR, fill = SITE)) +
-      scale_fill_discrete("") +
-      geom_density(alpha = 0.1) +
-      labs(title = "Densité d'échantillonnage par site au cours du temps") +
-      theme_fivethirtyeight()
-    # ggplotly(p)
-  })
+  # output$plot3 = renderPlot({ #renderPlotly({
+  #   RES = get_RES()
+  #   
+  #   ggplot(RES$SEL, aes(YEAR, fill = SITE)) +
+  #     scale_fill_discrete("") +
+  #     geom_density(alpha = 0.1) +
+  #     labs(title = "Densité d'échantillonnage par site au cours du temps") +
+  #     theme_fivethirtyeight()
+  #   # ggplotly(p)
+  # })
   
   ####################################################################
   output$plot4 = renderPlot({
@@ -674,9 +666,58 @@ server <- function(input, output, session) {
     TMP = merge(TMP, data.frame(RES$SEL, SAMP = 1), by = c("SITE","YEAR"), all.x = T)
     TMP$SAMP[which(is.na(TMP$SAMP))] = 0
     
-    ggplot(TMP, aes(YEAR, alpha = factor(SAMP))) +
+    TMP.split = split(TMP, TMP$SITE)
+    TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
+    {
+      cumul = cumsum(x$SAMP)
+      cumul_bis = cumul
+      for(i in 2:nrow(x))
+      {
+        if(cumul[i] == cumul[i-1]) { cumul_bis[i] = 0 }
+        if(cumul[i] == cumul[i-1] + 1 && cumul_bis[i-1] > 0)
+        {
+          cumul_bis[i] = cumul_bis[i-1]
+        }
+      }
+      cumul_ter = cumul_bis
+      for(i in 1:8)#nrow(x))
+      {
+        if(cumul_bis[i] > 0 && i < nrow(x))
+        {
+          ind = which(cumul_bis[(i+1):length(cumul_bis)] > cumul_bis[i])[1] + i
+          if (is.na(ind))
+          {
+            if(cumul_ter[i-1] > 0)
+            {
+              cumul_ter[i] = cumul_ter[i-1]
+            } else
+            {
+              cumul_ter[i] = length(which(cumul_bis[(i+1):length(cumul_bis)] == cumul_bis[i])) + 1
+            }
+          } else
+          {
+            cumul_ter[i] = cumul_bis[ind] - cumul_bis[i]
+          }
+        } else if(cumul_bis[i] > 0 && i == nrow(x))
+        {
+          if(cumul_ter[i-1] > 0)
+          {
+            cumul_ter[i] = cumul_ter[i-1]
+          } else
+          {
+            cumul_ter[i] = 1
+          }
+        }
+      }
+      return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
+    }
+    TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
+    colos = c('#fcc5c0','#fa9fb5','#f768a1','#dd3497','#ae017e','#7a0177','#49006a')
+    colos = c('#4477aa','#66ccee','#228833','#ccbb44','#ee6677','#aa3377','#bbbbbb')
+    
+    ggplot(TMP, aes(YEAR, alpha = factor(SAMP), fill = factor(cumul_ter))) +
       scale_alpha_discrete(guide = F, range = c(0,1)) +
-      scale_fill_identity() +
+      scale_fill_manual("", values = c("white", colos[1:max(TMP$cumul_ter, na.rm = T)])) +
       geom_bar(width = 1) +
       facet_wrap(~SITE) +
       theme_fivethirtyeight()
