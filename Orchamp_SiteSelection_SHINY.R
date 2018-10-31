@@ -247,7 +247,7 @@ ui <- fluidPage(
                     , label = "Années d'échantillonnage :"
                     , min = 2020
                     , max = 2080
-                    , value = c(2020, 2030)
+                    , value = c(2020, 2050)
                     , sep = ""
         ),
         
@@ -540,7 +540,7 @@ server <- function(input, output, session) {
     year.start = input$year.range[1]
     year.end = input$year.range[2]
     samp.years = seq(year.start, year.end, 1)
-    year.win = 5
+    year.win = 6
     
     prob.increase.sampXYears = 1 + input$prob.increase.sampXYears
     prob.decrease.sampThisYear = 1 - input$prob.decrease.sampThisYear
@@ -559,7 +559,7 @@ server <- function(input, output, session) {
     pool.GLOB = data.frame(COMB = comb.ALL.vec
                            , PROB = rep(1, length(comb.ALL.vec)))
     
-    get_clean()
+    # get_clean()
     
     ## --------------------------------------------------------------------------
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
@@ -569,6 +569,7 @@ server <- function(input, output, session) {
                      cat(" ", ye.start)
                      RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
                                             , firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
+                                            # , firstOK = TRUE
                                             , year.start = ye.start
                                             , year.end = year.end
                                             , samp.no_sites = input$samp.no_sites
@@ -693,6 +694,7 @@ server <- function(input, output, session) {
       return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
     }
     TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
+    TMP$cumul_ter[which(TMP$cumul_ter == 0)] = ""
     colos = c('#fcc5c0','#fa9fb5','#f768a1','#dd3497','#ae017e','#7a0177','#49006a')
     colos = c('#4477aa','#66ccee','#228833','#ccbb44','#ee6677','#aa3377','#bbbbbb')
     
