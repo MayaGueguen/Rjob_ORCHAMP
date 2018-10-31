@@ -680,35 +680,16 @@ server <- function(input, output, session) {
         }
       }
       cumul_ter = cumul_bis
-      for(i in 1:8)#nrow(x))
+      for(i in 1:nrow(x))
       {
-        if(cumul_bis[i] > 0 && i < nrow(x))
+        if(cumul_bis[i] > 0)
         {
-          ind = which(cumul_bis[(i+1):length(cumul_bis)] > cumul_bis[i])[1] + i
-          if (is.na(ind))
-          {
-            if(cumul_ter[i-1] > 0)
-            {
-              cumul_ter[i] = cumul_ter[i-1]
-            } else
-            {
-              cumul_ter[i] = length(which(cumul_bis[(i+1):length(cumul_bis)] == cumul_bis[i])) + 1
-            }
-          } else
-          {
-            cumul_ter[i] = cumul_bis[ind] - cumul_bis[i]
-          }
-        } else if(cumul_bis[i] > 0 && i == nrow(x))
-        {
-          if(cumul_ter[i-1] > 0)
-          {
-            cumul_ter[i] = cumul_ter[i-1]
-          } else
-          {
-            cumul_ter[i] = 1
-          }
+          cumul_ter[i] = length(which(cumul_bis == cumul_bis[i]))
         }
       }
+      cumul
+      cumul_bis
+      cumul_ter
       return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
     }
     TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
