@@ -37,8 +37,9 @@ constraint.notTogether = "Chamrousse_Ventoux Sud"
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
                             , year.start, year.end ## fixed inputs !!
+                            , ref ## fixed inputs !!
                             , samp.no_sites ## fixed inputs !!
-                            , comb.ALL.bin ## fixed inputs !!
+                            # , comb.ALL.bin ## fixed inputs !!
                             , prob.decrease.sampThisYear ## fixed inputs !!
                             , noSuccYears ## fixed inputs !!
                             , prob.decrease.sampSuccYears ## fixed inputs !!
@@ -119,8 +120,9 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK
                                , year.start = year.start
                                , year.end = year.end
+                               , ref = ref
                                , samp.no_sites = samp.no_sites
-                               , comb.ALL.bin = comb.ALL.bin
+                               # , comb.ALL.bin = comb.ALL.bin
                                , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                                , noSuccYears = noSuccYears
                                , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
@@ -129,20 +131,21 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     )
     
     ## EVALUATION OF RESULTS
-    ye = ye - 1
+    # ye = ye - 1
     cond.freq = cond.num = TRUE
-    ref = floor((year.end - year.start) / 5)
+    # ref = floor((year.end - year.start) / 5)
     res_tmp = rbind(res, res_bis$SEL)
     
     ## Frequency ?
     if (ye >= year.start + 5)
     {
       year.window = seq(ye - 5, ye)
+      cat("\n", year.window)
       SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
       cond.freq = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= 1)) == nrow(samp))
     }
     ## Total number ?
-    if (ye == year.end - 1)
+    if (ye == year.end)
     {
       SITE_table = table(res_tmp$SITE)
       cond.num = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= ref)) == nrow(samp))
@@ -157,11 +160,13 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
       ## No working sequence registered
       if(!firstOK)
       {
-        # ## First year of test : remove all files
-        # if (ye == year.start + 5)
-        # {
-        #   sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
-        # } else
+        cat("\nHEHO\n")
+        ## First year of test : remove all files
+        if (ye == year.start + 5)
+        {
+          sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
+        } 
+        # else
         # { ## Second year of test : shift files
         #   sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
         #   year.toKeep = seq(ye - 1, year.start)
@@ -179,6 +184,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
         # }
       } else
       { ## Remove only last year file
+        cat("\nploiuf\n")
         sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
       }
       
@@ -186,11 +192,12 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
       pool$PROB = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
-      return(FUN_SELECT_sites(ye = year.start, pool = pool, samp = samp, firstOK = firstOK
+      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp, firstOK = firstOK
                               , year.start = year.start
                               , year.end = year.end
+                              , ref = ref
                               , samp.no_sites = samp.no_sites
-                              , comb.ALL.bin = comb.ALL.bin
+                              # , comb.ALL.bin = comb.ALL.bin
                               , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                               , noSuccYears = noSuccYears
                               , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
@@ -526,14 +533,18 @@ server <- function(input, output, session) {
       withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                    , min = 0, max = year.end - year.start + 1, {
                      # cat("\n\n ==> CALCUL DE L'ECHANTILLONNAGE EN COURS \n")
-                     RES = foreach(ye.start = seq(year.end + 1 - 5, year.start, -1)) %do%
+                     RES = foreach(ye.start = seq(year.end - 5, year.start, -1)) %do%
                      {
+                       cat("\n\n ooooooooooooooooooooooooooooooooooo \n")
+                       cat("\n", ye.start)
+                       cat("\n")
                        RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
                                               , firstOK = ifelse(ye.start == year.end - 5, FALSE, TRUE)
                                               , year.start = ye.start
                                               , year.end = year.end
+                                              , ref = floor((year.end - year.start) / 5)
                                               , samp.no_sites = input$samp.no_sites
-                                              , comb.ALL.bin = comb.ALL.bin
+                                              # , comb.ALL.bin = comb.ALL.bin
                                               , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                                               , noSuccYears = input$noSuccYears
                                               , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears

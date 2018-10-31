@@ -123,7 +123,7 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ##' ###################################################################################################################################
 
 ## Apply sampling function for each required year
-FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
+FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE, ref)
 {
   # cat("\n ######################", ye, "######################\n")
   # cat("\n 1. Sites selection...")
@@ -205,29 +205,32 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
   
   if(ye > year.start)
   {
-    res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK)
-    ye = ye - 1
+    res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK, ref = ref)
+    # ye = ye - 1
     tmp = rbind(res, res_bis$SEL)
+    
+    cat("\n TEST FOR YEAR :", ye)
+    cat("\n")
     
     ## Evaluate results 2
     cond.freq = TRUE
     if (ye >= year.start + 5)
     {
       year.window = seq(ye - 5, ye)
-      # cat("\n", year.window)
+      cat("\n", year.window)
       SITE_table = table(tmp$SITE[which(tmp$YEAR %in% year.window)])
-      # print(SITE_table[order(names(SITE_table))])
-      # cat("\n", length(SITE_table))
+      print(SITE_table[order(names(SITE_table))])
+      cat("\n", length(SITE_table))
       cond.freq = (length(SITE_table) == sites.no && length(which(SITE_table >= 1)) == sites.no)
     }
     ## Evaluate results 1
     cond.num = TRUE
-    if (ye == year.end - 1)
+    if (ye == year.end)
     {
       SITE_table = table(tmp$SITE)
-      ref = floor((year.end - year.start) / 5)
-      # cat("\n", length(SITE_table))
-      # cat("\n", length(which(SITE_table >= ref)))
+      # ref = floor((year.end - year.start) / 5)
+      cat("\n", length(SITE_table))
+      cat("\n", length(which(SITE_table >= ref)))
       cond.num = (length(SITE_table) == sites.no && length(which(SITE_table >= ref)) == sites.no)
     }
     
@@ -236,24 +239,28 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
       return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL, SAMP = res_bis$SAMP))
     } else
     {
-      # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
-      # cat("\n cond.freq ", cond.freq)
-      # cat("\n cond.num ", cond.num)
-      # cat("\n")
+      cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
+      cat("\n cond.freq ", cond.freq)
+      cat("\n cond.num ", cond.num)
+      cat("\n")
       if(!firstOK)
       {
+        cat("\n\n HEHO \n\n")
+        cat("\n ye ", ye)
+        cat("\n year.start + 5 ", year.start + 5)
+        cat("\n")
         if (ye == year.start + 5)
         {
-          # cat("\n\n 1 PAAAAAAAAAAAASTEQUE \n\n")
+          cat("\n\n 1 PAAAAAAAAAAAASTEQUE \n\n")
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
         } else
         {
-          # cat("\n\n 2 MELOOOOOOOOOOOOOOON \n\n")
+          cat("\n\n 2 MELOOOOOOOOOOOOOOON \n\n")
           sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
           year.toKeep = seq(ye - 1, year.start)
-          # cat("\n YEAR TO KEEP :", year.toKeep)
-          # cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
-          # cat("\n")
+          cat("\n YEAR TO KEEP :", year.toKeep)
+          cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+          cat("\n")
 
           sapply(1:length(year.toKeep), function(x)
           {
@@ -270,7 +277,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
         }
       } else
       {
-        # cat("\n 3 AVOOOCAAAAAAT \n")
+        cat("\n 3 AVOOOCAAAAAAT \n")
         # if (ye == year.start + 5)
         # {
           sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
@@ -309,7 +316,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE)
       pool$AVAIL = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
-      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp, firstOK = firstOK))
+      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp, firstOK = firstOK, ref = ref))
       
     }
   } else
@@ -338,7 +345,7 @@ pool.GLOB = data.frame(COMB = comb.ALL.vec
 # year.end = year.start + 15
 sapply(list.files(pattern="SAUVEGARDE_ANNEE_"), file.remove)
 year.start = 2020
-year.end = 2050
+year.end = 2027
 samp.years = seq(year.start, year.end, 1)
 samp.no_years = length(samp.years)
 noXYears = 2
@@ -351,9 +358,11 @@ proc.time()
 prog.bar = txtProgressBar(min = 0, max = samp.no_years, style = 3)
 TMP = foreach(year.start = seq(year.end - 5, 2020, -1)) %do%
 {
-  # cat("\n\n ooooooooooooooooooooooooooooooooooooooooooooooo \n\n")
-  RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
-                         , firstOK = ifelse(year.start == year.end - 5, FALSE, TRUE))
+  cat("\n\n ooooooooooooooooooooooooooooooooooooooooooooooo \n\n")
+  RES = FUN_SELECT_sites(ye = year.end
+                         , pool = pool.GLOB, samp = samp.sites_tab
+                         , firstOK = ifelse(year.start == year.end - 5, FALSE, TRUE)
+                         , ref = floor((year.end - 2020) / 5))
   return(RES)
 }
 proc.time()
