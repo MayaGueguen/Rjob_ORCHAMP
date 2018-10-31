@@ -186,7 +186,18 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
         # }
       } else
       { ## Remove only last year file
+        # sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start)))
+        SAV.sites = SAV$SEL$SITE
         sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
+        
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1)))
+        for(si in SAV.sites)
+        {
+          ind = grep(si, SAV$POOL$COMB)
+          SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * 0.8
+        }
+        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1))
       }
       
       # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")

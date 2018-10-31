@@ -125,7 +125,7 @@ comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE, ref)
 {
-  # cat("\n ######################", ye, "######################\n")
+  cat("\n ######################", ye, "######################\n")
   # cat("\n 1. Sites selection...")
   # print(head(pool))
   
@@ -257,63 +257,46 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE, ref)
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
         } else
         {
-          cat("\n\n 2 MELOOOOOOOOOOOOOOON \n\n")
-          sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
-          year.toKeep = seq(ye - 1, year.start)
-          cat("\n YEAR TO KEEP :", year.toKeep)
-          cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
-          cat("\n")
-
-          sapply(1:length(year.toKeep), function(x)
-          {
-            year.prev = year.toKeep[x]
-            year.new = year.end - x + 1
-            file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.prev)
-                        , to = paste0("SAUVEGARDE_ANNEE_", year.new))
-            SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.new)))
-            SAV$SEL$YEAR = year.new
-            save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.new))
-          })
-          
-          firstOK = TRUE
+          # cat("\n\n 2 MELOOOOOOOOOOOOOOON \n\n")
+          # sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
+          # year.toKeep = seq(ye - 1, year.start)
+          # cat("\n YEAR TO KEEP :", year.toKeep)
+          # cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
+          # cat("\n")
+          # 
+          # sapply(1:length(year.toKeep), function(x)
+          # {
+          #   year.prev = year.toKeep[x]
+          #   year.new = year.end - x + 1
+          #   file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.prev)
+          #               , to = paste0("SAUVEGARDE_ANNEE_", year.new))
+          #   SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.new)))
+          #   SAV$SEL$YEAR = year.new
+          #   save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.new))
+          # })
+          # 
+          # firstOK = TRUE
         }
       } else
       {
         # cat("\n 3 AVOOOCAAAAAAT \n")
         # if (ye == year.start + 5)
         # {
-          sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
-        # } else
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start)))
+        # SAV.sites = paste0(SAV$SEL$SITE, collapse = "_")
+        SAV.sites = SAV$SEL$SITE
+        sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
+        
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1)))
+        for(si in SAV.sites)
+        {
+          ## Get all the combinations in which the site is present
+          ind = grep(si, SAV$POOL$COMB)
+          ## Anyway, reduce probability of sampling the site next year
+          SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * 0.5
+        }
+        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1))
       }
-      # if (ye == year.start + 5)
-      # {
-      #   sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
-      # } else
-      # {
-      #   # sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, ye)), file.remove)
-      #   # return(FUN_SELECT_sites(ye = year.end, pool = res_bis$POOL, samp = res_bis$SAMP))
-      #   
-      #   sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
-      #   year.toKeep = seq(ye - 1, year.start)
-      #   cat("\n YEAR TO KEEP :", year.toKeep)
-      #   cat("\n RENAMED IN :", year.end - 1:length(year.toKeep) + 1)
-      #   # cat("\n RENAMED IN :", year.toKeep + 1)
-      #   cat("\n")
-      #   # sapply(1:length(year.toKeep), function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.toKeep[x])
-      #   #                                                       , to = paste0("SAUVEGARDE_ANNEE_", year.end - x + 1)))
-      #   # sapply(year.toKeep, function(x) file.rename(from = paste0("SAUVEGARDE_ANNEE_", x)
-      #   #                                             , to = paste0("SAUVEGARDE_ANNEE_", x + 1)))
-      #   sapply(1:length(year.toKeep), function(x)
-      #   {
-      #     year.prev = year.toKeep[x]
-      #     year.new = year.end - x + 1
-      #     file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.prev)
-      #                 , to = paste0("SAUVEGARDE_ANNEE_", year.new))
-      #     SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.new)))
-      #     SAV$SEL$YEAR = year.new
-      #     save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.new))
-      #   })
-      # }
       pool$PROB = 1
       pool$AVAIL = 1
       samp$LAST_YEAR = 0
