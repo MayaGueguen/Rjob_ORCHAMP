@@ -12,6 +12,7 @@ library(shinyFiles)
 library(shinythemes)
 library(shinycssloaders)
 library(DT)
+library(data.table)
 
 ###################################################################################################################################
 
@@ -238,14 +239,10 @@ ui <- fluidPage(
                  "",
                  numericInput(inputId = "samp.no_sites"
                               , label = "Nombre de sites / an"
-                              , min = 6
-                              , max = 6
+                              , min = 5
+                              , max = 7
                               , value = 6
                               , step = 1
-                              # , min = 5
-                              # , max = 7
-                              # , value = 5
-                              # , step = 1
                  )
           )
         )
@@ -345,10 +342,6 @@ ui <- fluidPage(
                      , max = 0.4
                      , value = 0.4
                      , step = 0.1
-                     # , min = 0
-                     # , max = 1
-                     # , value = 0.01
-                     # , step = 0.1
         ),
         p(em("(ii) si le site a été échantillonné plusieurs années de suite, ")),
         fluidRow(
@@ -360,10 +353,6 @@ ui <- fluidPage(
                               , max = 2
                               , value = 2
                               , step = 1
-                              # , min = 2
-                              # , max = 5
-                              # , value = 3
-                              # , step = 1
                  )
           ),
           column(5,
@@ -374,10 +363,6 @@ ui <- fluidPage(
                               , max = 0.6
                               , value = 0.6
                               , step = 0.1
-                              # , min = 0
-                              # , max = 1
-                              # , value = 0.2
-                              # , step = 0.1
                  )
           )
         ),
@@ -392,10 +377,6 @@ ui <- fluidPage(
                               , max = 2
                               , value = 2
                               , step = 1
-                              # , min = 2
-                              # , max = 5
-                              # , value = 3
-                              # , step = 1
                  )
           ),
           column(5,
@@ -406,10 +387,6 @@ ui <- fluidPage(
                               , max = 0.25
                               , value = 0.25
                               , step = 0.1
-                              # , min = 0
-                              # , max = 1
-                              # , value = 0.01
-                              # , step = 0.1
                  )
           )
         ),
@@ -428,36 +405,34 @@ ui <- fluidPage(
     # Output
     mainPanel(
       fluidRow(
-        column(4
+        column(6
                , ""
                , p(em("Démarrer à partir des résultats précédents ?"))
         ),
-        column(4
+        column(3
                , ""
                , p(em("Sauvegarder les résultats ?"))
         ),
-        column(4
+        column(3
                , ""
                , p()
         )
       ),
       
       fluidRow(
-        column(4
+        column(6
                , ""
                , checkboxInput(inputId = "startFromSave"
                                , label = "oui"
                                , value = TRUE)
         ),
-        column(4
+        column(3
                , ""
                , checkboxInput(inputId = "saveResults"
                                , label = "oui"
                                , value = TRUE)
-               # ,  actionButton(inputId = "doSaving"
-               #                 , label = "Sauvegarder résultats")
         ),
-        column(4
+        column(3
                , ""
                , submitButton(text = "Lancer calcul"
                               , icon = icon("refresh"))
@@ -465,26 +440,22 @@ ui <- fluidPage(
       ),
       
       fluidRow(
-        column(4
+        column(6
                , ""
-               , selectInput(inputId = "dirRes"
-                           , label = "Sélectionner un dossier"
-                           , choices = list.files(pattern = "^ORCHAMP_")
-                           , selected = NULL
-                           , multiple = FALSE
-               )
-               # , fileInput(inputId = "dirRes"
-               #             , label = "Sélectionner un fichier"
-               #             , multiple = F)
+               , uiOutput("dirRes_selector")
+               # , htmlOutput("dirRes_selector")
+               # , selectInput(inputId = "dirRes"
+               #               , label = "Sélectionner un dossier"
+               #               , choices = saving.folders
+               #               , selected = NULL
+               #               , multiple = FALSE
+               # )
         ),
-        column(4
+        column(3
                , ""
                , p()
-               # , fileInput(inputId = "dirSave"
-               #             , label = "Sélectionner un fichier"
-               #             , multiple = F)
         ),
-        column(4
+        column(3
                , ""
                , p()
         )
@@ -493,9 +464,12 @@ ui <- fluidPage(
       
       tabsetPanel(
         tabPanel("Sites sélectionnés", dataTableOutput(outputId = "RES_SEL")), 
-        tabPanel("Graphiques",
-                 withSpinner(plotOutput(outputId = "plot2"), type = 4)
-                 , withSpinner(plotOutput(outputId = "plot4"), type = 1)
+        tabPanel("Graphiques"
+                 , br()
+                 , withSpinner(plotOutput(outputId = "plot2", width = "100%", height = "600px"), type = 4)
+                 , br()
+                 , br()
+                 , withSpinner(plotOutput(outputId = "plot4", width = "100%", height = "1000px"), type = 1)
         )
       )
     )
@@ -508,6 +482,108 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   session$onSessionEnded(stopApp)
+  
+  output$dirRes_selector = observeEvent({
+    renderUI({
+      selectInput(inputId = "dirRes"
+                  , label = "Sélectionner un dossier"
+                  , choices = c("",list.files(pattern = "^ORCHAMP_"))
+                  , selected = NULL
+                  , multiple = FALSE
+      )
+    })
+  })
+  
+  ####################################################################
+  get_allParams = reactive({
+    year.win = 6
+    PARAMS = data.frame(PARAMETRE = c("ANNEE_DEPART"
+                                      , "ANNEE_FIN"
+                                      , "NOMBRE_SITES_PAR_AN"
+                                      , "NOMBRE_SITES_MAX_PAR_PARTENAIRE")
+                        , VALEUR = c(input$year.range[1]
+                                     , input$year.range[2]
+                                     , input$samp.no_sites
+                                     , input$constraint.no_sites_max))
+    if (length(input$constraint.SAJF) > 0)
+    {
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_SAJF", VALEUR = input$constraint.SAJF))
+    }
+    if (length(input$constraint.PNE) > 0)
+    {
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_PNE", VALEUR = input$constraint.PNE))
+    }
+    if (length(input$constraint.CBNA) > 0)
+    {
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_CBNA", VALEUR = input$constraint.CBNA))
+    }
+    if (length(input$constraint.CBNMED) > 0)
+    {
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_CBNMED", VALEUR = input$constraint.CBNMED))
+    }
+    if (length(input$constraint.notTogether) > 0)
+    {
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_SIMILARITE", VALEUR = input$constraint.notTogether))
+    }
+    PARAMS = rbind(PARAMS, data.frame(PARAMETRE = c("SEUIL_ANNEES_PAS_ECHANTILLONNAGE"
+                                                    , "PROB_AUGMENTATION_PAS_ECHANTILLONNAGE"
+                                                    , "PROB_DIMINUTION_ECHANTILLONNAGE_CETTE_ANNEE"
+                                                    , "SEUIL_ANNEES_ECHANTILLONNAGE_SUCCESSIF"
+                                                    , "PROB_DIMINUTION_ECHANTILLONNAGE_SUCCESSIF"
+                                                    , "FENETRE_CHECK_FREQUENCE"
+                                                    , "SEUIL_CHECK_FREQUENCE"
+                                                    , "PROB_DIMINUTION_CHECK_FREQUENCE_INCORRECT")
+                                      , VALEUR = c(input$noXYears
+                                                   , input$prob.increase.sampXYears
+                                                   , input$prob.decrease.sampThisYear
+                                                   , input$noSuccYears
+                                                   , input$prob.decrease.sampSuccYears
+                                                   , year.win
+                                                   , floor((input$year.range[2] - input$year.range[1]) / year.win)
+                                                   , input$prob.decrease.notWorking)))
+
+    if (input$saveResults)
+    {
+      fwrite(PARAMS, file = paste0(get_dirSave(), "/PARAMS_echantillonnage_", get_params2(), ".txt")
+             , sep = "\t", quote = FALSE, row.names = FALSE)
+    }
+  })
+  
+  get_params1 = reactive({
+    year.win = 6
+    params = paste0(input$year.range[1], "_"
+                    , input$year.range[2], "_"
+                    , year.win, "_"
+                    , input$prob.decrease.sampThisYear, "_"
+                    , input$prob.decrease.sampSuccYears, "_"
+                    , input$prob.increase.sampXYears, "_"
+                    , input$prob.decrease.notWorking
+    )
+    params
+  })
+  
+  get_version = reactive({
+    if (input$saveResults)
+    {
+      params = paste0(input$year.range[1], "_", input$year.range[2])
+      version = length(list.files(path = getwd(), pattern = paste0("^ORCHAMP_selection_.*", params), recursive = F)) + 1
+      version
+    }
+  })
+  
+  get_params2 = reactive({
+    paste0("version", get_version(), "_", input$year.range[1], "_", input$year.range[2])
+  })
+  
+  get_params3 = reactive({
+    paste0("version", get_version(), "_", get_params1())
+  })
+  
+  get_dirSave = reactive({
+    dirSave = paste0("ORCHAMP_selection_", get_params2())
+    if (input$saveResults) dir.create(dirSave)
+    dirSave
+  })
   
   ####################################################################
   get_comb.ALL.vec = reactive({
@@ -572,7 +648,6 @@ server <- function(input, output, session) {
       sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
     } else
     {
-      print(input$dirRes)
       if (!is.null(input$dirRes) && nchar(input$dirRes) > 0)
       {
         sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
@@ -583,7 +658,7 @@ server <- function(input, output, session) {
                                                  , to = paste0("./", x)))
       }
     }
-
+    
     ## --------------------------------------------------------------------------
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                  , min = 0, max = year.end - year.start + 1, {
@@ -617,24 +692,23 @@ server <- function(input, output, session) {
                    }
                  })
     
+    ## COPY outputs
     if (input$saveResults)
     {
+      dirSave = get_dirSave()
+      
+      ## Save params
+      get_allParams()
+      
+      ## Copy files into folder
       curr_files = list.files(path = getwd()
                               , pattern = "SAUVEGARDE_ANNEE_"
                               , full.names = FALSE)
-      dirSave = paste0("ORCHAMP_selection_"
-                       , input$year.range[1], "_"
-                       , input$year.range[2], "_"
-                       , year.win, "_"
-                       , input$prob.decrease.sampThisYear, "_"
-                       , input$prob.decrease.sampSuccYears, "_"
-                       , input$prob.increase.sampXYears, "_"
-                       , input$prob.decrease.notWorking
-      )
-      dir.create(dirSave)
       sapply(curr_files, function(x) file.copy(from = paste0("./", x)
                                                , to = paste0(dirSave, "/", x)))
-      # , to = paste0(dirname(input$dirSave), "/", x)))
+      
+      ## Update the list of saving folders
+      # saving.folders = c("",list.files(pattern = "^ORCHAMP_"))
     }
     
     ## LOAD the correct RES
@@ -662,25 +736,50 @@ server <- function(input, output, session) {
       return(res)
     }
     rownames(RES) = names(RES.split)
+    
+    if (input$saveResults)
+    {
+      tmp_RES = RES
+      tmp_RES = cbind(data.frame(ANNEE = rownames(tmp_RES)), tmp_RES)
+      fwrite(tmp_RES, file = paste0(get_dirSave(), "/TABLE_echantillonnage_", get_params3(), ".txt")
+             , sep = "\t", quote = FALSE, row.names = FALSE)
+    }
+    
     RES
   })
   
-  output$RES_POOL = renderDataTable({
-    RES = get_RES()
-    RES$POOL
-  })
+  # output$RES_POOL = renderDataTable({
+  #   RES = get_RES()
+  #   RES$POOL
+  # })
   
   ####################################################################
   output$plot2 = renderPlot({
     RES = get_RES()
     RES$SEL$SITE = as.character(RES$SEL$SITE)
     
-    ggplot(RES$SEL, aes(SITE)) +
+    pp = ggplot(RES$SEL, aes(SITE)) +
       geom_bar() +
-      geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5), lty = 2) +
-      labs(title = "Nombre d'années échantillonnées par site") +
+      geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5)
+                 , lty = 2, lwd = 1, color = "grey") +
+      stat_function(fun = mean, geom = "line"
+                    , lty = 2, lwd = 1, color = "brown") +
+      labs(title = "Nombre d'années échantillonnées par site\n"
+           , subtitle = paste0("En gris, le nombre minimal d'échantillonnages par site requis.\n"
+                               , "En rouge, le nombre moyen d'échantillonnages par site avec la sélection calculée.\n")) +
       theme_fivethirtyeight() +
-      theme(axis.text.x = element_text(angle = 90))
+      theme(axis.text.x = element_text(angle = 45
+                                       , size = 15
+                                       , vjust = 0.4)
+            , axis.text.y = element_text(size = 12))
+    
+    if (input$saveResults)
+    {
+      ggsave(filename = paste0("PLOT1_echantillonnage_", get_params3(), ".pdf")
+             , plot = pp, path = get_dirSave(), width = 8, height = 8)
+    }
+    
+    pp
   })
   
   ####################################################################
@@ -723,16 +822,33 @@ server <- function(input, output, session) {
     }
     TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
     TMP$cumul_ter[which(TMP$cumul_ter == 0)] = ""
-    colos = c('#fcc5c0','#fa9fb5','#f768a1','#dd3497','#ae017e','#7a0177','#49006a')
     colos = c('#4477aa','#66ccee','#228833','#ccbb44','#ee6677','#aa3377','#bbbbbb')
     
-    ggplot(TMP, aes(YEAR, alpha = factor(SAMP), fill = factor(cumul_ter))) +
+    pp = ggplot(TMP, aes(YEAR, alpha = factor(SAMP), fill = factor(cumul_ter))) +
       scale_alpha_discrete(guide = F, range = c(0,1)) +
-      scale_fill_manual("", values = c("white", colos[1:max(TMP$cumul_ter, na.rm = T)])) +
+      scale_fill_manual("Nombre d'années successives d'échantillonnage :"
+                        , values = c("white", colos[1:max(TMP$cumul_ter, na.rm = T)])) +
       geom_bar(width = 1) +
-      facet_wrap(~SITE) +
-      theme_fivethirtyeight()
+      facet_wrap( ~ SITE, ncol = 4) +
+      labs(title = "Fréquence d'échantillonnage par site\n") +
+      theme_fivethirtyeight() +
+      theme(strip.text = element_text(size = 15)
+            , panel.spacing = unit(x = 1, units = "lines")
+            , axis.text.y = element_blank()
+            , axis.text.x = element_text(size = 12)
+            , legend.title = element_text(size = 15)
+            , legend.text = element_text(size = 12)
+            , legend.box.margin = margin(6, 0, 0, 0, "pt"))
+    
+    if (input$saveResults)
+    {
+      ggsave(filename = paste0("PLOT2_echantillonnage_", get_params3(), ".pdf")
+             , plot = pp, path = get_dirSave(), width = 8, height = 11)
+    }
+    
+    pp
   })
+  
 }
 
 ###################################################################################################################################
