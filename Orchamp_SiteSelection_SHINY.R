@@ -16,7 +16,7 @@ library(data.table)
 
 ###################################################################################################################################
 
-dir.working = "~/Documents/_SCRIPTS/2018_10_Orchamp_SiteSelection/Rjob_ORCHAMP/"
+START = TRUE
 
 sites.names = c("Anterne", "Argentiere", "Armenaz", "Bonette", "Caramagne", "Chaillol", "Chamrousse",
                 "Claree", "Devoluy Nord", "Devoluy Sud", "Lautaret", "Lauvitel", "Loriaz",
@@ -434,8 +434,11 @@ ui <- fluidPage(
         ),
         column(3
                , ""
-               , submitButton(text = "Lancer calcul"
+               , actionButton(inputId = "refresh"
+                              , label = "Lancer calcul"
                               , icon = icon("refresh"))
+               # , submitButton(text = "Lancer calcul"
+               #                , icon = icon("refresh"))
         )
       ),
       
@@ -483,19 +486,8 @@ server <- function(input, output, session) {
   
   session$onSessionEnded(stopApp)
   
-  output$dirRes_selector = observeEvent({
-    renderUI({
-      selectInput(inputId = "dirRes"
-                  , label = "Sélectionner un dossier"
-                  , choices = c("",list.files(pattern = "^ORCHAMP_"))
-                  , selected = NULL
-                  , multiple = FALSE
-      )
-    })
-  })
-  
   ####################################################################
-  get_allParams = reactive({
+  get_allParams = eventReactive(input$refresh, {
     year.win = 6
     PARAMS = data.frame(PARAMETRE = c("ANNEE_DEPART"
                                       , "ANNEE_FIN"
@@ -549,7 +541,7 @@ server <- function(input, output, session) {
     }
   })
   
-  get_params1 = reactive({
+  get_params1 = eventReactive(input$refresh, {
     year.win = 6
     params = paste0(input$year.range[1], "_"
                     , input$year.range[2], "_"
@@ -562,7 +554,7 @@ server <- function(input, output, session) {
     params
   })
   
-  get_version = reactive({
+  get_version = eventReactive(input$refresh, {
     if (input$saveResults)
     {
       params = paste0(input$year.range[1], "_", input$year.range[2])
@@ -571,22 +563,22 @@ server <- function(input, output, session) {
     }
   })
   
-  get_params2 = reactive({
+  get_params2 = eventReactive(input$refresh, {
     paste0("version", get_version(), "_", input$year.range[1], "_", input$year.range[2])
   })
   
-  get_params3 = reactive({
+  get_params3 = eventReactive(input$refresh, {
     paste0("version", get_version(), "_", get_params1())
   })
   
-  get_dirSave = reactive({
+  get_dirSave = eventReactive(input$refresh, {
     dirSave = paste0("ORCHAMP_selection_", get_params2())
     if (input$saveResults) dir.create(dirSave)
     dirSave
   })
   
   ####################################################################
-  get_comb.ALL.vec = reactive({
+  get_comb.ALL.vec = eventReactive(input$refresh, {
     
     ## Create all combinations of sites
     comb.ALL = as.data.frame(t(combn(x = sites.names, m = input$samp.no_sites)))
@@ -615,7 +607,7 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
-  get_RES = reactive({
+  get_RES = eventReactive(input$refresh, {
     
     ## Get arguments
     sites.no = length(sites.names)
@@ -848,6 +840,19 @@ server <- function(input, output, session) {
     
     pp
   })
+  
+  output$dirRes_selector = renderUI({
+    if (input$refresh)
+    {
+      selectInput(inputId = "dirRes"
+                  , label = "Sélectionner un dossier"
+                  , choices = c("",list.files(pattern = "^ORCHAMP_"))
+                  , selected = NULL
+                  , multiple = FALSE
+      )
+    }
+  })
+  
   
 }
 
