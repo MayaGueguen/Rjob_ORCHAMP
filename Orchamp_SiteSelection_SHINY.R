@@ -51,7 +51,6 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
 )
 {
   # cat(" ", ye)
-  
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye)))
   {
     # cat("\n 1. Sites selection...")
@@ -117,7 +116,6 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     samp = SAV$SAMP
   }
   
-  # setProgress(value = year.end - ye + 1, detail = paste("Année", ye))
   if(ye > year.start)
   {
     res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK
@@ -143,8 +141,6 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
       year.window = seq(ye - (test.win - 1), ye)
       # cat("\n", year.window)
       SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
-      # print(SITE_table[order(names(SITE_table))])
-      # cat("\n", length(SITE_table))
       cond.freq = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= 1)) == nrow(samp))
     }
     ## Total number ?
@@ -153,9 +149,6 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
       SITE_table = table(res_tmp$SITE)
       cond.num = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= test.ref)) == nrow(samp))
     }
-    # cat("\n cond.freq ", cond.freq)
-    # cat("\n cond.num ", cond.num)
-    # cat("\n")
     
     ## --------------------------------------------------------------------------
     if(cond.freq && cond.num)
@@ -171,25 +164,8 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
         {
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
         } 
-        # else
-        # { ## Second year of test : shift files
-        #   sapply(seq(year.end, ye), function(x) file.remove(paste0("SAUVEGARDE_ANNEE_", x)))
-        #   year.toKeep = seq(ye - 1, year.start)
-        #   sapply(1:length(year.toKeep), function(x)
-        #   {
-        #     year.prev = year.toKeep[x]
-        #     year.new = year.end - x + 1
-        #     file.rename(from = paste0("SAUVEGARDE_ANNEE_", year.prev)
-        #                 , to = paste0("SAUVEGARDE_ANNEE_", year.new))
-        #     SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.new)))
-        #     SAV$SEL$YEAR = year.new
-        #     save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.new))
-        #   })
-        #   firstOK = TRUE
-        # }
       } else
       { ## Remove only last year file
-        # sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
         SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start), envir = environment()))
         SAV.sites = SAV$SEL$SITE
         sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
@@ -514,20 +490,7 @@ server <- function(input, output, session) {
     comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
     comb.ALL.vec
   })
-  
-  ####################################################################
-  # get_comb.ALL.bin = reactive({
-  #   comb.ALL.vec = get_comb.ALL.vec()
-  #   
-  #   ## Transform combinations into binary matrix
-  #   comb.ALL.bin = foreach(si = sites.names, .combine = 'cbind') %do%
-  #   {
-  #     sapply(comb.ALL.vec, function(x) length(grep(si, x)))
-  #   }
-  #   colnames(comb.ALL.bin) = sites.names
-  #   comb.ALL.bin
-  # })
-  
+
   ####################################################################
   get_RES = reactive({
     
@@ -626,16 +589,6 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
-  # output$plot1 = renderPlot({
-  #   RES = get_RES()
-  #   
-  #   ggplot(RES$POOL, aes(PROB)) +
-  #     geom_histogram() +
-  #     labs(title = "Distribution des probabilités de sélection des sites") +
-  #     theme_fivethirtyeight()
-  # })
-  
-  ####################################################################
   output$plot2 = renderPlot({
     RES = get_RES()
     RES$SEL$SITE = as.character(RES$SEL$SITE)
@@ -647,18 +600,6 @@ server <- function(input, output, session) {
       theme_fivethirtyeight() +
       theme(axis.text.x = element_text(angle = 90))
   })
-  
-  ####################################################################
-  # output$plot3 = renderPlot({ #renderPlotly({
-  #   RES = get_RES()
-  #   
-  #   ggplot(RES$SEL, aes(YEAR, fill = SITE)) +
-  #     scale_fill_discrete("") +
-  #     geom_density(alpha = 0.1) +
-  #     labs(title = "Densité d'échantillonnage par site au cours du temps") +
-  #     theme_fivethirtyeight()
-  #   # ggplotly(p)
-  # })
   
   ####################################################################
   output$plot4 = renderPlot({
