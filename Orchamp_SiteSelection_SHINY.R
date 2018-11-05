@@ -16,8 +16,6 @@ library(data.table)
 
 ###################################################################################################################################
 
-START = TRUE
-
 sites.names = c("Anterne", "Argentiere", "Armenaz", "Bonette", "Caramagne", "Chaillol", "Chamrousse",
                 "Claree", "Devoluy Nord", "Devoluy Sud", "Lautaret", "Lauvitel", "Loriaz",
                 "Peclod", "Plan Aiguille", "Ristolas", "Valloire", "Vanoise", "Ventoux Sud")
@@ -437,8 +435,6 @@ ui <- fluidPage(
                , actionButton(inputId = "refresh"
                               , label = "Lancer calcul"
                               , icon = icon("refresh"))
-               # , submitButton(text = "Lancer calcul"
-               #                , icon = icon("refresh"))
         )
       ),
       
@@ -446,13 +442,6 @@ ui <- fluidPage(
         column(6
                , ""
                , uiOutput("dirRes_selector")
-               # , htmlOutput("dirRes_selector")
-               # , selectInput(inputId = "dirRes"
-               #               , label = "Sélectionner un dossier"
-               #               , choices = saving.folders
-               #               , selected = NULL
-               #               , multiple = FALSE
-               # )
         ),
         column(3
                , ""
@@ -701,9 +690,6 @@ server <- function(input, output, session) {
                               , full.names = FALSE)
       sapply(curr_files, function(x) file.copy(from = paste0("./", x)
                                                , to = paste0(dirSave, "/", x)))
-      
-      ## Update the list of saving folders
-      # saving.folders = c("",list.files(pattern = "^ORCHAMP_"))
     }
     
     ## LOAD the correct RES
