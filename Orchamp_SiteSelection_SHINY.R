@@ -466,8 +466,11 @@ ui <- fluidPage(
       br(),
       
       tabsetPanel(
-        tabPanel("Sites sélectionnés", dataTableOutput(outputId = "RES_SEL")), 
-        tabPanel("Graphiques"
+        tabPanel(title = "Sites sélectionnés"
+                 , value = "selectionsite"
+                 , dataTableOutput(outputId = "RES_SEL")), 
+        tabPanel(title = "Graphiques"
+                 , value = "graphics"
                  , br()
                  , withSpinner(plotOutput(outputId = "plot2", width = "100%", height = "600px"), type = 4)
                  , br()
@@ -716,7 +719,7 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
-  output$RES_SEL = renderDataTable({
+  get_RES_SEL = eventReactive(input$refresh, {
     RES = get_RES()
     RES = RES$SEL
     RES.split = split(RES, RES$YEAR)
@@ -740,13 +743,13 @@ server <- function(input, output, session) {
     RES
   })
   
-  # output$RES_POOL = renderDataTable({
-  #   RES = get_RES()
-  #   RES$POOL
-  # })
+  output$RES_SEL = renderDataTable({
+    get_RES_SEL()
+  })
+
   
   ####################################################################
-  output$plot2 = renderPlot({
+  get_plot2 = eventReactive(input$refresh, {
     RES = get_RES()
     RES$SEL$SITE = as.character(RES$SEL$SITE)
     
@@ -754,7 +757,7 @@ server <- function(input, output, session) {
       geom_bar() +
       geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5)
                  , lty = 2, lwd = 1, color = "grey") +
-      stat_function(fun = mean, geom = "line"
+      geom_hline(yintercept = mean(table(RES$SEL$SITE))
                     , lty = 2, lwd = 1, color = "brown") +
       labs(title = "Nombre d'années échantillonnées par site\n"
            , subtitle = paste0("En gris, le nombre minimal d'échantillonnages par site requis.\n"
@@ -774,8 +777,12 @@ server <- function(input, output, session) {
     pp
   })
   
+  output$plot2 = renderPlot({
+    print(get_plot2())
+  })
+  
   ####################################################################
-  output$plot4 = renderPlot({
+  get_plot4 = eventReactive(input$refresh, {
     
     ## Get arguments
     year.start = input$year.range[1]
@@ -841,6 +848,11 @@ server <- function(input, output, session) {
     pp
   })
   
+  output$plot4 = renderPlot({
+    print(get_plot4())
+  })
+  
+  ####################################################################
   output$dirRes_selector = renderUI({
     if (input$refresh)
     {
