@@ -8,11 +8,14 @@ library(ggplot2)
 library(ggthemes)
 library(plotly)
 library(shiny)
+library(shinyFiles)
 library(shinythemes)
 library(shinycssloaders)
 library(DT)
 
 ###################################################################################################################################
+
+dir.working = "~/Documents/_SCRIPTS/2018_10_Orchamp_SiteSelection/Rjob_ORCHAMP/"
 
 sites.names = c("Anterne", "Argentiere", "Armenaz", "Bonette", "Caramagne", "Chaillol", "Chamrousse",
                 "Claree", "Devoluy Nord", "Devoluy Sud", "Lautaret", "Lauvitel", "Loriaz",
@@ -104,17 +107,17 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     ## RESULTS
     res = data.frame(YEAR = ye, SITE = sites)
     SAV = list(SEL = res, POOL = pool, SAMP = samp)
-    save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye))
+    save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye), envir = environment())
   } else
   {
     # cat("\n Loading previous results...\n")
-    SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye)))
+    SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye), envir = environment()))
     res = SAV$SEL
     pool = SAV$POOL
     samp = SAV$SAMP
   }
   
-  setProgress(value = year.end - ye + 1, detail = paste("Année", ye))
+  # setProgress(value = year.end - ye + 1, detail = paste("Année", ye))
   if(ye > year.start)
   {
     res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK
@@ -187,17 +190,17 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
       } else
       { ## Remove only last year file
         # sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start)))
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start), envir = environment()))
         SAV.sites = SAV$SEL$SITE
         sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
         
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1)))
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment()))
         for(si in SAV.sites)
         {
           ind = grep(si, SAV$POOL$COMB)
           SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * 0.8
         }
-        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1))
+        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment())
       }
       
       # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
@@ -230,7 +233,6 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
 ui <- fluidPage(
   
   # theme = "cosmo",
-  
   titlePanel("ORCHAMP : sélection des sites"
              , windowTitle = "ORCHAMP"),
   
@@ -393,6 +395,11 @@ ui <- fluidPage(
                               # , value = 3
                               # , step = 1
                  )
+          ),
+          column(3
+                 , ""
+                 ,  actionButton(inputId = "doCleaning"
+                                 , label = "Effacer résultats")
           )
         ),
         
@@ -432,40 +439,34 @@ ui <- fluidPage(
     # Output
     mainPanel(
       fluidRow(
-          column(6
-                 , ""
-                 , submitButton("Lancer calcul", icon("refresh"))
-          ),
-          column(6
-                 , ""
-                 ,  actionButton("doCleaning", "Effacer résultats")
-          )
+        column(2
+               , ""
+               , helpText("Démarrer à partir des résultats précédents ?")
+        ),
+        column(1
+               , ""
+               , checkboxInput(inputId = "startFromSave"
+                               , label = "oui"
+                               , value = TRUE)
+        ),
+        column(3
+               , ""
+               , submitButton(text = "Lancer calcul"
+                              , icon = icon("refresh"))
+        ),
+        column(3
+               , ""
+               ,  actionButton(inputId = "doSaving"
+                               , label = "Sauvegarder résultats")
+        )
       ),
-      # 
-      # actionButton("doCleaning", "Effacer résultats")
-      # wellPanel("CONSOLE",style = "overflow-y:scroll; max-height: 600px",
-      #           verbatimTextOutput("CONSOLE")
-      # ),
       br(),
       
       tabsetPanel(
         tabPanel("Sites sélectionnés", dataTableOutput(outputId = "RES_SEL")), 
         tabPanel("Graphiques",
-                 # fluidRow(
-                 #   column(6
-                 #          , ""
-                 #          , withSpinner(plotOutput(outputId = "plot2"), type = 4)
-                 #   ),
-                 #   column(6
-                 #          , ""
-                 #          , withSpinner(plotOutput(outputId = "plot3"), type = 4)
-                 #   )
-                 # )
-                 # , withSpinner(plotlyOutput(outputId = "plot3"), type = 1)
-                 # , withSpinner(plotOutput(outputId = "plot3"), type = 1)
                  withSpinner(plotOutput(outputId = "plot2"), type = 4)
                  , withSpinner(plotOutput(outputId = "plot4"), type = 1)
-                 # , plotOutput(outputId = "plot4"))
         )
       )
     )
@@ -478,7 +479,13 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   session$onSessionEnded(stopApp)
-  
+
+  ####################################################################
+  get_clean = reactive({
+    ## REMOVE previous results
+    sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+  })
+
   ####################################################################
   get_comb.ALL.vec = reactive({
     
@@ -506,16 +513,6 @@ server <- function(input, output, session) {
     
     comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
     comb.ALL.vec
-  })
-  
-  ####################################################################
-  get_clean = reactive({
-    ## REMOVE previous results
-    sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
-  })
-  
-  observeEvent(input$doCleaning, {
-    get_clean()
   })
   
   ####################################################################
@@ -559,7 +556,10 @@ server <- function(input, output, session) {
     pool.GLOB = data.frame(COMB = comb.ALL.vec
                            , PROB = rep(1, length(comb.ALL.vec)))
     
-    # get_clean()
+    if (!input$startFromSave)
+    {
+      get_clean()
+    }
     
     ## --------------------------------------------------------------------------
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
@@ -567,9 +567,17 @@ server <- function(input, output, session) {
                    RES = foreach(ye.start = seq(year.end - (year.win - 1), year.start, -1)) %do%
                    {
                      cat(" ", ye.start)
+                     if (input$startFromSave)
+                     {
+                       firstOK = TRUE
+                     } else
+                     {
+                       firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
+                     }
+                     setProgress(value = year.end - ye.start + 1, detail = paste("Année", ye.start))
+                     
                      RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
-                                            , firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
-                                            # , firstOK = TRUE
+                                            , firstOK = firstOK
                                             , year.start = ye.start
                                             , year.end = year.end
                                             , samp.no_sites = input$samp.no_sites
@@ -688,9 +696,6 @@ server <- function(input, output, session) {
           cumul_ter[i] = length(which(cumul_bis == cumul_bis[i]))
         }
       }
-      cumul
-      cumul_bis
-      cumul_ter
       return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
     }
     TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
