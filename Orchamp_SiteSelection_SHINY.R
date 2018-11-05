@@ -30,7 +30,7 @@ constraint.CBNMED = c("Ventoux Sud", "Bonette")
 
 comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
-constraint.notTogether = "Chamrousse_Ventoux Sud"
+constraint.notTogether = vector()
 
 
 ###################################################################################################################################
@@ -46,6 +46,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
                             , prob.decrease.sampSuccYears ## fixed inputs !!
                             , noXYears ## fixed inputs !!
                             , prob.increase.sampXYears ## fixed inputs !!
+                            , prob.decrease.notWorking ## fixed inputs !!
                             , test.ref ## fixed inputs !!
                             , test.win ## fixed inputs !!
 )
@@ -127,6 +128,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
                                , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
                                , noXYears = noXYears
                                , prob.increase.sampXYears = prob.increase.sampXYears
+                               , prob.decrease.notWorking = prob.decrease.notWorking
                                , test.ref = test.ref
                                , test.win = test.win
     )
@@ -174,7 +176,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
         for(si in SAV.sites)
         {
           ind = grep(si, SAV$POOL$COMB)
-          SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * 0.8
+          SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * prob.decrease.notWorking
         }
         save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment())
       }
@@ -192,6 +194,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
                               , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
                               , noXYears = noXYears
                               , prob.increase.sampXYears = prob.increase.sampXYears
+                              , prob.decrease.notWorking = prob.decrease.notWorking
                               , test.ref = test.ref
                               , test.win = test.win
       ))
@@ -220,25 +223,31 @@ ui <- fluidPage(
       
       ## ----------------------------------------------------------
       wellPanel(
-        
-        sliderInput("year.range"
-                    , label = "Années d'échantillonnage :"
-                    , min = 2020
-                    , max = 2080
-                    , value = c(2020, 2050)
-                    , sep = ""
-        ),
-        
-        numericInput(inputId = "samp.no_sites"
-                     , label = "Nombre de sites / an :"
-                     , min = 6
-                     , max = 6
-                     , value = 6
-                     , step = 1
-                     # , min = 5
-                     # , max = 7
-                     # , value = 5
-                     # , step = 1
+        fluidRow(
+          column(8,
+                 "",
+                 sliderInput("year.range"
+                             , label = "Années d'échantillonnage"
+                             , min = 2020
+                             , max = 2080
+                             , value = c(2020, 2050)
+                             , sep = ""
+                 )
+          ),
+          column(4,
+                 "",
+                 numericInput(inputId = "samp.no_sites"
+                              , label = "Nombre de sites / an"
+                              , min = 6
+                              , max = 6
+                              , value = 6
+                              , step = 1
+                              # , min = 5
+                              # , max = 7
+                              # , value = 5
+                              # , step = 1
+                 )
+          )
         )
       ),
       
@@ -246,15 +255,23 @@ ui <- fluidPage(
       wellPanel(
         
         h3("A. Contraintes d'échantillonnage"),
-        p(em("Les sites sont attribués aux différents établissements impliqués.
-             Un nombre limite de sites à échantillonner par an et par établissement
+        p(em("Les sites sont attribués aux différents partenaires impliqués.
+             Un nombre limite de sites à échantillonner par an et par partenaire
              est fixé au préalable.")),
+        
+        numericInput(inputId = "constraint.no_sites_max"
+                     , label = "Nombre de sites MAX / partenaire / an"
+                     , min = 2
+                     , max = 5
+                     , value = 3
+                     , step = 1
+        ),
         
         fluidRow(
           column(6,
                  "",
                  selectInput(inputId = "constraint.CBNA"
-                             , label = "Sites à charge du CBNA :"
+                             , label = "Sites à charge du CBNA"
                              , choices = sites.names
                              , selected = constraint.CBNA
                              , multiple = TRUE
@@ -266,7 +283,7 @@ ui <- fluidPage(
                    column(12,
                           "",
                           selectInput(inputId = "constraint.CBNMED"
-                                      , label = "Sites à charge du CBNMED :"
+                                      , label = "Sites à charge du CBNMED"
                                       , choices = sites.names
                                       , selected = constraint.CBNMED
                                       , multiple = TRUE
@@ -277,7 +294,7 @@ ui <- fluidPage(
                    column(12,
                           "",
                           selectInput(inputId = "constraint.PNE"
-                                      , label = "Sites à charge du PNE :"
+                                      , label = "Sites à charge du PNE"
                                       , choices = sites.names
                                       , selected = constraint.PNE
                                       , multiple = TRUE
@@ -288,7 +305,7 @@ ui <- fluidPage(
                    column(12,
                           "",
                           selectInput(inputId = "constraint.SAJF"
-                                      , label = "Sites à charge de la SAJF :"
+                                      , label = "Sites à charge de la SAJF"
                                       , choices = sites.names
                                       , selected = constraint.SAJF
                                       , multiple = TRUE
@@ -296,16 +313,9 @@ ui <- fluidPage(
                    )
                  )
           )
-        ),
-        
-        numericInput(inputId = "constraint.no_sites_max"
-                     , label = "Nombre de sites MAX / établissement / an :"
-                     , min = 2
-                     , max = 5
-                     , value = 3
-                     , step = 1
         )
         ),
+      
       
       ## ----------------------------------------------------------
       wellPanel(
@@ -315,7 +325,7 @@ ui <- fluidPage(
              Des sites similaires ne peuvent être échantillonnés la même année.")),
         
         selectInput(inputId = "constraint.notTogether"
-                    , label = "Sites à ne pas échantillonner la même année :"
+                    , label = "Sites à ne pas échantillonner la même année"
                     , choices = comb.sites.2
                     , selected = constraint.notTogether
                     , multiple = TRUE
@@ -326,13 +336,11 @@ ui <- fluidPage(
       wellPanel(
         
         h3("C. Evolution des probabilités de sélection"),
-        p(em("La probabilité de chaque site d'etre échantillonné évolue au cours
-             du temps (i) si le site vient d'etre échantillonné, (ii) si le site a été
-             échantillonné plusieurs années de suite, (iii) si le site n'a pas été
-             échantillonné depuis plusieurs années.")),
         
+        p(em("La probabilité de chaque site d'etre échantillonné évolue au cours du temps")),
+        p(em("(i) si le site vient d'etre échantillonné,")),
         numericInput(inputId = "prob.decrease.sampThisYear"
-                     , label = "Diminution après échantillonnage (%) :"
+                     , label = "Diminution après échantillonnage (%)"
                      , min = 0.4
                      , max = 0.4
                      , value = 0.4
@@ -342,26 +350,12 @@ ui <- fluidPage(
                      # , value = 0.01
                      # , step = 0.1
         ),
-        
+        p(em("(ii) si le site a été échantillonné plusieurs années de suite, ")),
         fluidRow(
-          column(6,
-                 "",
-                 numericInput(inputId = "noXYears"
-                              , label = "Seuil d'années sans échantillonnage :"
-                              , min = 2
-                              , max = 2
-                              , value = 2
-                              , step = 1
-                              # , min = 2
-                              # , max = 5
-                              # , value = 3
-                              # , step = 1
-                 )
-          ),
-          column(6,
+          column(7,
                  "",
                  numericInput(inputId = "noSuccYears"
-                              , label = "Seuil d'années d'échantillonnage successif :"
+                              , label = "Seuil d'années successives"
                               , min = 2
                               , max = 2
                               , value = 2
@@ -372,32 +366,10 @@ ui <- fluidPage(
                               # , step = 1
                  )
           ),
-          column(3
-                 , ""
-                 ,  actionButton(inputId = "doCleaning"
-                                 , label = "Effacer résultats")
-          )
-        ),
-        
-        fluidRow(
-          column(6,
-                 "",
-                 numericInput(inputId = "prob.increase.sampXYears"
-                              , label = "Augmentation après seuil (%) :"
-                              , min = 0.25
-                              , max = 0.25
-                              , value = 0.25
-                              , step = 0.1
-                              # , min = 0
-                              # , max = 1
-                              # , value = 0.01
-                              # , step = 0.1
-                 )
-          ),
-          column(6,
+          column(5,
                  "",
                  numericInput(inputId = "prob.decrease.sampSuccYears"
-                              , label = "Diminution après seuil (%) :"
+                              , label = "Diminution après seuil (%)"
                               , min = 0.6
                               , max = 0.6
                               , value = 0.6
@@ -408,32 +380,113 @@ ui <- fluidPage(
                               # , step = 0.1
                  )
           )
+        ),
+        
+        p(em("(iii) si le site n'a pas été échantillonné depuis plusieurs années,")),
+        fluidRow(
+          column(7,
+                 "",
+                 numericInput(inputId = "noXYears"
+                              , label = "Seuil d'années non-échantillonnées"
+                              , min = 2
+                              , max = 2
+                              , value = 2
+                              , step = 1
+                              # , min = 2
+                              # , max = 5
+                              # , value = 3
+                              # , step = 1
+                 )
+          ),
+          column(5,
+                 "",
+                 numericInput(inputId = "prob.increase.sampXYears"
+                              , label = "Augmentation après seuil (%)"
+                              , min = 0.25
+                              , max = 0.25
+                              , value = 0.25
+                              , step = 0.1
+                              # , min = 0
+                              # , max = 1
+                              # , value = 0.01
+                              # , step = 0.1
+                 )
+          )
+        ),
+        
+        p(em("(iv) si le site ne valide pas les conditions à long-terme.")),
+        numericInput(inputId = "prob.decrease.notWorking"
+                     , label = "Diminution après échantillonnage (%)"
+                     , min = 0.2
+                     , max = 0.2
+                     , value = 0.2
+                     , step = 0.1
         )
-        )
+      )
         ),
     
     # Output
     mainPanel(
       fluidRow(
-        column(2
+        column(4
                , ""
-               , helpText("Démarrer à partir des résultats précédents ?")
+               , p(em("Démarrer à partir des résultats précédents ?"))
         ),
-        column(1
+        column(4
+               , ""
+               , p(em("Sauvegarder les résultats ?"))
+        ),
+        column(4
+               , ""
+               , p()
+        )
+      ),
+      
+      fluidRow(
+        column(4
                , ""
                , checkboxInput(inputId = "startFromSave"
                                , label = "oui"
                                , value = TRUE)
         ),
-        column(3
+        column(4
+               , ""
+               , checkboxInput(inputId = "saveResults"
+                               , label = "oui"
+                               , value = TRUE)
+               # ,  actionButton(inputId = "doSaving"
+               #                 , label = "Sauvegarder résultats")
+        ),
+        column(4
                , ""
                , submitButton(text = "Lancer calcul"
                               , icon = icon("refresh"))
-        ),
-        column(3
+        )
+      ),
+      
+      fluidRow(
+        column(4
                , ""
-               ,  actionButton(inputId = "doSaving"
-                               , label = "Sauvegarder résultats")
+               , selectInput(inputId = "dirRes"
+                           , label = "Sélectionner un dossier"
+                           , choices = list.files(pattern = "^ORCHAMP_")
+                           , selected = NULL
+                           , multiple = FALSE
+               )
+               # , fileInput(inputId = "dirRes"
+               #             , label = "Sélectionner un fichier"
+               #             , multiple = F)
+        ),
+        column(4
+               , ""
+               , p()
+               # , fileInput(inputId = "dirSave"
+               #             , label = "Sélectionner un fichier"
+               #             , multiple = F)
+        ),
+        column(4
+               , ""
+               , p()
         )
       ),
       br(),
@@ -446,7 +499,7 @@ ui <- fluidPage(
         )
       )
     )
-        )
+    )
   )
 
 ###################################################################################################################################
@@ -455,13 +508,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   session$onSessionEnded(stopApp)
-
-  ####################################################################
-  get_clean = reactive({
-    ## REMOVE previous results
-    sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
-  })
-
+  
   ####################################################################
   get_comb.ALL.vec = reactive({
     
@@ -490,7 +537,7 @@ server <- function(input, output, session) {
     comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
     comb.ALL.vec
   })
-
+  
   ####################################################################
   get_RES = reactive({
     
@@ -505,6 +552,7 @@ server <- function(input, output, session) {
     prob.increase.sampXYears = 1 + input$prob.increase.sampXYears
     prob.decrease.sampThisYear = 1 - input$prob.decrease.sampThisYear
     prob.decrease.sampSuccYears = 1 - input$prob.decrease.sampSuccYears
+    prob.decrease.notWorking = 1 - input$prob.decrease.notWorking
     
     comb.ALL.vec = get_comb.ALL.vec()
     
@@ -521,9 +569,21 @@ server <- function(input, output, session) {
     
     if (!input$startFromSave)
     {
-      get_clean()
+      sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+    } else
+    {
+      print(input$dirRes)
+      if (!is.null(input$dirRes) && nchar(input$dirRes) > 0)
+      {
+        sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+        prev_files = list.files(path = input$dirRes
+                                , pattern = "SAUVEGARDE_ANNEE_"
+                                , full.names = FALSE)
+        sapply(prev_files, function(x) file.copy(from = paste0(input$dirRes, "/", x)
+                                                 , to = paste0("./", x)))
+      }
     }
-    
+
     ## --------------------------------------------------------------------------
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                  , min = 0, max = year.end - year.start + 1, {
@@ -549,12 +609,34 @@ server <- function(input, output, session) {
                                             , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
                                             , noXYears = input$noXYears
                                             , prob.increase.sampXYears = prob.increase.sampXYears
+                                            , prob.decrease.notWorking = prob.decrease.notWorking
                                             , test.ref = floor((year.end - ye.start) / year.win)
                                             , test.win = year.win
                      )
                      return(RES)
                    }
                  })
+    
+    if (input$saveResults)
+    {
+      curr_files = list.files(path = getwd()
+                              , pattern = "SAUVEGARDE_ANNEE_"
+                              , full.names = FALSE)
+      dirSave = paste0("ORCHAMP_selection_"
+                       , input$year.range[1], "_"
+                       , input$year.range[2], "_"
+                       , year.win, "_"
+                       , input$prob.decrease.sampThisYear, "_"
+                       , input$prob.decrease.sampSuccYears, "_"
+                       , input$prob.increase.sampXYears, "_"
+                       , input$prob.decrease.notWorking
+      )
+      dir.create(dirSave)
+      sapply(curr_files, function(x) file.copy(from = paste0("./", x)
+                                               , to = paste0(dirSave, "/", x)))
+      # , to = paste0(dirname(input$dirSave), "/", x)))
+    }
+    
     ## LOAD the correct RES
     SEL = foreach(ye = samp.years, .combine = "rbind") %do%
     {
@@ -656,3 +738,4 @@ server <- function(input, output, session) {
 ###################################################################################################################################
 # Create a Shiny app object
 shinyApp(ui = ui, server = server)
+
