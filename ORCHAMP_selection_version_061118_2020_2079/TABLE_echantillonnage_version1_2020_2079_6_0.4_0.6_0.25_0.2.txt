@@ -1,0 +1,61 @@
+ANNEE	SITE1	SITE2	SITE3	SITE4	SITE5	SITE6
+2020	Argentiere	Chaillol	Lautaret	Lauvitel	Peclod	Plan Aiguille
+2021	Bonette	Caramagne	Chamrousse	Peclod	Valloire	Ventoux Sud
+2022	Anterne	Caramagne	Chaillol	Devoluy Nord	Vanoise	Ventoux Sud
+2023	Armenaz	Bonette	Chamrousse	Claree	Lauvitel	Loriaz
+2024	Argentiere	Claree	Devoluy Sud	Lautaret	Plan Aiguille	Vanoise
+2025	Anterne	Bonette	Devoluy Nord	Lautaret	Ristolas	Vanoise
+2026	Anterne	Argentiere	Chaillol	Devoluy Sud	Plan Aiguille	Ristolas
+2027	Bonette	Chaillol	Devoluy Nord	Peclod	Valloire	Ventoux Sud
+2028	Armenaz	Bonette	Caramagne	Claree	Lautaret	Ristolas
+2029	Anterne	Chamrousse	Lauvitel	Loriaz	Peclod	Valloire
+2030	Argentiere	Armenaz	Bonette	Claree	Ristolas	Ventoux Sud
+2031	Anterne	Caramagne	Chaillol	Devoluy Sud	Lauvitel	Vanoise
+2032	Anterne	Bonette	Devoluy Sud	Peclod	Plan Aiguille	Valloire
+2033	Bonette	Chaillol	Devoluy Nord	Loriaz	Valloire	Vanoise
+2034	Armenaz	Chaillol	Claree	Lautaret	Loriaz	Ristolas
+2035	Anterne	Caramagne	Chamrousse	Plan Aiguille	Vanoise	Ventoux Sud
+2036	Argentiere	Bonette	Lauvitel	Peclod	Ristolas	Ventoux Sud
+2037	Caramagne	Chamrousse	Devoluy Nord	Lautaret	Lauvitel	Ventoux Sud
+2038	Argentiere	Claree	Devoluy Sud	Lautaret	Lauvitel	Vanoise
+2039	Armenaz	Claree	Devoluy Nord	Ristolas	Valloire	Ventoux Sud
+2040	Argentiere	Bonette	Chaillol	Loriaz	Valloire	Vanoise
+2041	Anterne	Caramagne	Chamrousse	Loriaz	Plan Aiguille	Valloire
+2042	Anterne	Armenaz	Chaillol	Devoluy Nord	Lautaret	Peclod
+2043	Chaillol	Devoluy Nord	Peclod	Plan Aiguille	Vanoise	Ventoux Sud
+2044	Bonette	Chaillol	Chamrousse	Devoluy Nord	Devoluy Sud	Lauvitel
+2045	Anterne	Argentiere	Bonette	Chamrousse	Claree	Ristolas
+2046	Caramagne	Devoluy Sud	Lautaret	Lauvitel	Loriaz	Plan Aiguille
+2047	Armenaz	Devoluy Nord	Lautaret	Plan Aiguille	Ristolas	Valloire
+2048	Chamrousse	Claree	Lautaret	Ristolas	Valloire	Vanoise
+2049	Armenaz	Caramagne	Claree	Lauvitel	Peclod	Ventoux Sud
+2050	Armenaz	Bonette	Chaillol	Chamrousse	Loriaz	Ventoux Sud
+2051	Anterne	Argentiere	Caramagne	Lauvitel	Plan Aiguille	Vanoise
+2052	Anterne	Caramagne	Chamrousse	Devoluy Sud	Lauvitel	Plan Aiguille
+2053	Chaillol	Claree	Devoluy Nord	Ristolas	Vanoise	Ventoux Sud
+2054	Argentiere	Chaillol	Lautaret	Loriaz	Ristolas	Valloire
+2055	Claree	Loriaz	Peclod	Valloire	Vanoise	Ventoux Sud
+2056	Argentiere	Armenaz	Bonette	Lautaret	Ristolas	Ventoux Sud
+2057	Anterne	Argentiere	Devoluy Nord	Devoluy Sud	Lauvitel	Plan Aiguille
+2058	Anterne	Caramagne	Chaillol	Chamrousse	Claree	Ristolas
+2059	Armenaz	Bonette	Caramagne	Peclod	Valloire	Ventoux Sud
+2060	Bonette	Chamrousse	Devoluy Nord	Lautaret	Lauvitel	Ristolas
+2061	Armenaz	Claree	Lautaret	Loriaz	Valloire	Vanoise
+2062	Anterne	Bonette	Claree	Devoluy Nord	Peclod	Ristolas
+2063	Anterne	Argentiere	Chaillol	Devoluy Sud	Loriaz	Plan Aiguille
+2064	Anterne	Argentiere	Loriaz	Plan Aiguille	Valloire	Vanoise
+2065	Caramagne	Devoluy Nord	Lautaret	Lauvitel	Peclod	Ventoux Sud
+2066	Argentiere	Chamrousse	Claree	Valloire	Vanoise	Ventoux Sud
+2067	Armenaz	Claree	Loriaz	Peclod	Plan Aiguille	Ventoux Sud
+2068	Argentiere	Bonette	Caramagne	Chaillol	Lautaret	Ristolas
+2069	Anterne	Chaillol	Chamrousse	Devoluy Nord	Devoluy Sud	Valloire
+2070	Armenaz	Bonette	Chaillol	Chamrousse	Lauvitel	Ristolas
+2071	Armenaz	Bonette	Chamrousse	Peclod	Plan Aiguille	Valloire
+2072	Argentiere	Armenaz	Claree	Lautaret	Lauvitel	Vanoise
+2073	Argentiere	Chaillol	Loriaz	Valloire	Vanoise	Ventoux Sud
+2074	Bonette	Caramagne	Chamrousse	Claree	Devoluy Nord	Plan Aiguille
+2075	Anterne	Caramagne	Chaillol	Devoluy Nord	Devoluy Sud	Plan Aiguille
+2076	Anterne	Devoluy Sud	Peclod	Plan Aiguille	Ristolas	Valloire
+2077	Anterne	Chaillol	Claree	Devoluy Sud	Loriaz	Vanoise
+2078	Armenaz	Devoluy Sud	Lautaret	Lauvitel	Valloire	Vanoise
+2079	Anterne	Argentiere	Armenaz	Plan Aiguille	Ristolas	Ventoux Sud

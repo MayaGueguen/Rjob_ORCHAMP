@@ -52,7 +52,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
 )
 {
   # cat(" ", ye)
-  if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye)))
+  if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
   {
     # cat("\n 1. Sites selection...")
     sites.sel = sample(x = pool$COMB
@@ -107,11 +107,11 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     ## RESULTS
     res = data.frame(YEAR = ye, SITE = sites)
     SAV = list(SEL = res, POOL = pool, SAMP = samp)
-    save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye), envir = environment())
+    save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment())
   } else
   {
     # cat("\n Loading previous results...\n")
-    SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye), envir = environment()))
+    SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment()))
     res = SAV$SEL
     pool = SAV$POOL
     samp = SAV$SAMP
@@ -170,25 +170,25 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
         # if (ye == year.start + (test.win - 1))
         if (ye == year.start + (test.win - 1))
         {
-          sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
+          sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start), ".RData"), file.remove)
         } 
       } else
       { ## Remove only last year file
         # SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start), envir = environment()))
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end), envir = environment()))
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end, ".RData"), envir = environment()))
         SAV.sites = SAV$SEL$SITE
         # sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
-        sapply(paste0("SAUVEGARDE_ANNEE_", year.end), file.remove)
+        sapply(paste0("SAUVEGARDE_ANNEE_", year.end, ".RData"), file.remove)
         
         # SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment()))
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end - 1), envir = environment()))
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end - 1, ".RData"), envir = environment()))
         for(si in SAV.sites)
         {
           ind = grep(si, SAV$POOL$COMB)
           SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * prob.decrease.notWorking
         }
         # save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment())
-        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.end - 1), envir = environment())
+        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.end - 1, ".RData"), envir = environment())
       }
       
       # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
@@ -751,10 +751,10 @@ server <- function(input, output, session) {
     ## LOAD the correct RES
     SEL = foreach(ye = samp.years, .combine = "rbind") %do%
     {
-      SAV = get(load(paste0("SAUVEGARDE_ANNEE_",ye)))
+      SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
       return(SAV$SEL)
     }
-    load(paste0("SAUVEGARDE_ANNEE_",year.start))
+    load(paste0("SAUVEGARDE_ANNEE_", year.start, ".RData"))
     RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
     
     return(RES)
