@@ -403,58 +403,90 @@ ui <- fluidPage(
     
     # Output
     mainPanel(
-      fluidRow(
-        column(6
-               , ""
-               , p(em("Démarrer à partir des résultats précédents ?"))
+      wellPanel(
+        fluidRow(
+          column(4
+                 , ""
+                 , p(em("Démarrer à partir des résultats précédents ?"))
+          ),
+          column(5
+                 , ""
+                 , p(em("Sauvegarder les résultats ?"))
+          ),
+          column(3
+                 , ""
+                 , p()
+          )
         ),
-        column(3
-               , ""
-               , p(em("Sauvegarder les résultats ?"))
+        
+        fluidRow(
+          column(4
+                 , ""
+                 , checkboxInput(inputId = "startFromSave"
+                                 , label = "oui"
+                                 , value = TRUE)
+          ),
+          column(5
+                 , ""
+                 , checkboxInput(inputId = "saveResults"
+                                 , label = "oui"
+                                 , value = TRUE)
+          ),
+          column(3
+                 , ""
+                 , actionButton(inputId = "refresh"
+                                , label = "Lancer calcul"
+                                , icon = icon("refresh"))
+          )
         ),
-        column(3
-               , ""
-               , actionButton(inputId = "refresh"
-                              , label = "Lancer calcul"
-                              , icon = icon("refresh"))
+        
+        fluidRow(
+          column(4
+                 , ""
+                 , uiOutput("dirRes_selector")
+          ),
+          column(5
+                 , ""
+                 , p()
+          ),
+          column(3
+                 , ""
+                 , p()
+          )
         )
       ),
-      
-      fluidRow(
-        column(6
-               , ""
-               , checkboxInput(inputId = "startFromSave"
-                               , label = "oui"
-                               , value = TRUE)
+      wellPanel(
+        fluidRow(
+          column(4
+                 , ""
+                 , p(em("1. Rassembler tous les résultats sous forme d'archive"))
+          ),
+          column(5
+                 , ""
+                 , p(em("2. Sélectionner l'archive à récupérer"))
+          ),
+          column(3
+                 , ""
+                 , p(em("3. Télécharger l'archive"))
+          )
         ),
-        column(3
-               , ""
-               , checkboxInput(inputId = "saveResults"
-                               , label = "oui"
-                               , value = TRUE)
-        ),
-        column(3
-               , ""
-               , uiOutput("zip_selector")
-        )
-      ),
-      
-      fluidRow(
-        column(6
-               , ""
-               , uiOutput("dirRes_selector")
-        ),
-        column(3
-               , ""
-               , actionButton(inputId = "doZip"
-                              , label = "Archiver résultats"
-                              , icon = icon("zip"))
-        ),
-        column(3
-               , ""
-               , downloadButton(outputId = "downloadSelection"
-                              , label = "Télécharger résultats"
-                              , icon = icon("download"))
+        fluidRow(
+          column(4
+                 , ""
+                 , actionButton(inputId = "doZip"
+                                , label = "Archiver résultats"
+                                , icon = icon("zip"))
+          ),
+          column(5
+                 , ""
+                 , uiOutput("zip_selector")
+          ),
+          column(3
+                 , ""
+                 , downloadButton(outputId = "downloadSelection"
+                                  , label = "Télécharger résultats"
+                                  , icon = icon("download"))
+          )
         )
       ),
       br(),
@@ -871,7 +903,7 @@ server <- function(input, output, session) {
   })
   
   output$zip_selector = renderUI({
-    if (input$refresh || input$doZip)
+    if (input$doZip)
     {
       selectInput(inputId = "zip"
                   , label = "Sélectionner un dossier"
