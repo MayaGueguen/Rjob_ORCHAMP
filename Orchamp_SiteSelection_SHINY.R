@@ -117,9 +117,11 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     samp = SAV$SAMP
   }
   
-  if(ye > year.start)
+  # if(ye > year.start)
+  if(ye < year.end)
   {
-    res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK
+    # res_bis = FUN_SELECT_sites(ye = ye - 1, pool = pool, samp = samp, firstOK = firstOK
+    res_bis = FUN_SELECT_sites(ye = ye + 1, pool = pool, samp = samp, firstOK = firstOK
                                , year.start = year.start
                                , year.end = year.end
                                , samp.no_sites = samp.no_sites
@@ -138,15 +140,18 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     res_tmp = rbind(res, res_bis$SEL)
     
     ## Frequency ?
-    if (ye >= year.start + (test.win - 1))
+    # if (ye >= year.start + (test.win - 1))
+    if (ye <= year.end - (test.win - 1))
     {
-      year.window = seq(ye - (test.win - 1), ye)
+      # year.window = seq(ye - (test.win - 1), ye)
+      year.window = seq(ye, ye + (test.win - 1))
       # cat("\n", year.window)
       SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
       cond.freq = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= 1)) == nrow(samp))
     }
     ## Total number ?
-    if (ye == year.end)
+    # if (ye == year.end)
+    if (ye == year.start)
     {
       SITE_table = table(res_tmp$SITE)
       cond.num = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= test.ref)) == nrow(samp))
@@ -162,30 +167,36 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
       if(!firstOK)
       {
         ## First year of test : remove all files
+        # if (ye == year.start + (test.win - 1))
         if (ye == year.start + (test.win - 1))
         {
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start)), file.remove)
         } 
       } else
       { ## Remove only last year file
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start), envir = environment()))
+        # SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start), envir = environment()))
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end), envir = environment()))
         SAV.sites = SAV$SEL$SITE
-        sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
+        # sapply(paste0("SAUVEGARDE_ANNEE_", year.start), file.remove)
+        sapply(paste0("SAUVEGARDE_ANNEE_", year.end), file.remove)
         
-        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment()))
+        # SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment()))
+        SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end - 1), envir = environment()))
         for(si in SAV.sites)
         {
           ind = grep(si, SAV$POOL$COMB)
           SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * prob.decrease.notWorking
         }
-        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment())
+        # save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.start + 1), envir = environment())
+        save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.end - 1), envir = environment())
       }
       
       # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
       pool$PROB = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
-      return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp, firstOK = firstOK
+      # return(FUN_SELECT_sites(ye = year.end, pool = pool, samp = samp, firstOK = firstOK
+      return(FUN_SELECT_sites(ye = year.start, pool = pool, samp = samp, firstOK = firstOK
                               , year.start = year.start
                               , year.end = year.end
                               , samp.no_sites = samp.no_sites
@@ -683,22 +694,29 @@ server <- function(input, output, session) {
     ## --------------------------------------------------------------------------
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                  , min = 0, max = year.end - year.start + 1, {
-                   RES = foreach(ye.start = seq(year.end - (year.win - 1), year.start, -1)) %do%
+                   # RES = foreach(ye.start = seq(year.end - (year.win - 1), year.start, -1)) %do%
+                   RES = foreach(ye.end = seq(year.start + (year.win - 1), year.end, 1)) %do%
                    {
-                     cat(" ", ye.start)
+                     # cat(" ", ye.start)
+                     cat(" ", ye.end)
                      if (input$startFromSave)
                      {
                        firstOK = TRUE
                      } else
                      {
-                       firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
+                       # firstOK = ifelse(ye.start == year.end - (year.win - 1), FALSE, TRUE)
+                       firstOK = ifelse(ye.end == year.start + (year.win - 1), FALSE, TRUE)
                      }
-                     setProgress(value = year.end - ye.start + 1, detail = paste("Année", ye.start))
+                     # setProgress(value = year.end - ye.start + 1, detail = paste("Année", ye.start))
+                     setProgress(value = ye.end - year.start + 1, detail = paste("Année", ye.end))
                      
-                     RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
+                     # RES = FUN_SELECT_sites(ye = year.end, pool = pool.GLOB, samp = samp.sites_tab
+                     RES = FUN_SELECT_sites(ye = year.start, pool = pool.GLOB, samp = samp.sites_tab
                                             , firstOK = firstOK
-                                            , year.start = ye.start
-                                            , year.end = year.end
+                                            # , year.start = ye.start
+                                            # , year.end = year.end
+                                            , year.start = year.start
+                                            , year.end = ye.end
                                             , samp.no_sites = input$samp.no_sites
                                             , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                                             , noSuccYears = input$noSuccYears
@@ -706,7 +724,8 @@ server <- function(input, output, session) {
                                             , noXYears = input$noXYears
                                             , prob.increase.sampXYears = prob.increase.sampXYears
                                             , prob.decrease.notWorking = prob.decrease.notWorking
-                                            , test.ref = floor((year.end - ye.start) / year.win)
+                                            # , test.ref = floor((year.end - ye.start) / year.win)
+                                            , test.ref = floor((ye.end - year.start) / year.win)
                                             , test.win = year.win
                      )
                      return(RES)
@@ -727,10 +746,6 @@ server <- function(input, output, session) {
                               , full.names = FALSE)
       sapply(curr_files, function(x) file.copy(from = paste0("./", x)
                                                , to = paste0(dirSave, "/", x)))
-      
-      ## ZIP results
-      # zip(zipfile = paste0("SAUVEGARDE_ORCHAMP_selection_", Sys.Date(), ".zip")
-      #     , list.files(path = dirSave, full.names = T))
     }
     
     ## LOAD the correct RES
