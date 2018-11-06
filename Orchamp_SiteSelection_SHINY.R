@@ -13,6 +13,7 @@ library(shinythemes)
 library(shinycssloaders)
 library(DT)
 library(data.table)
+library(zip)
 
 ###################################################################################################################################
 
@@ -413,7 +414,9 @@ ui <- fluidPage(
         ),
         column(3
                , ""
-               , p()
+               , actionButton(inputId = "refresh"
+                              , label = "Lancer calcul"
+                              , icon = icon("refresh"))
         )
       ),
       
@@ -432,9 +435,7 @@ ui <- fluidPage(
         ),
         column(3
                , ""
-               , actionButton(inputId = "refresh"
-                              , label = "Lancer calcul"
-                              , icon = icon("refresh"))
+               , uiOutput("zip_selector")
         )
       ),
       
@@ -445,11 +446,15 @@ ui <- fluidPage(
         ),
         column(3
                , ""
-               , p()
+               , actionButton(inputId = "doZip"
+                              , label = "Archiver résultats"
+                              , icon = icon("zip"))
         ),
         column(3
                , ""
-               , p()
+               , downloadButton(outputId = "downloadSelection"
+                              , label = "Télécharger résultats"
+                              , icon = icon("download"))
         )
       ),
       br(),
@@ -690,6 +695,10 @@ server <- function(input, output, session) {
                               , full.names = FALSE)
       sapply(curr_files, function(x) file.copy(from = paste0("./", x)
                                                , to = paste0(dirSave, "/", x)))
+      
+      ## ZIP results
+      # zip(zipfile = paste0("SAUVEGARDE_ORCHAMP_selection_", Sys.Date(), ".zip")
+      #     , list.files(path = dirSave, full.names = T))
     }
     
     ## LOAD the correct RES
@@ -850,6 +859,38 @@ server <- function(input, output, session) {
       )
     }
   })
+  
+  ####################################################################
+  get_zipfiles = eventReactive(input$refresh, {
+    zip(zipfile = paste0("SAUVEGARDE_ORCHAMP_selection_", Sys.Date(), ".zip")
+        , list.files(path = get_dirSave(), full.names = T))
+  })
+  
+  observeEvent(input$doZip, {
+    get_zipfiles()
+  })
+  
+  output$zip_selector = renderUI({
+    if (input$refresh || input$doZip)
+    {
+      selectInput(inputId = "zip"
+                  , label = "Sélectionner un dossier"
+                  , choices = c("",list.files(pattern = "^SAUVEGARDE_ORCHAMP_"))
+                  , selected = NULL
+                  , multiple = TRUE
+      )
+    }
+  })
+  
+  output$downloadSelection = downloadHandler(
+    filename = function(){
+      paste0("SAUVEGARDE_ORCHAMP_selection_", Sys.Date(), ".zip")
+    },
+    content = function(file){
+      file.copy(paste0("SAUVEGARDE_ORCHAMP_selection_", Sys.Date(), ".zip"), file)
+    },
+    contentType = "application/zip"
+  )
   
   
 }
