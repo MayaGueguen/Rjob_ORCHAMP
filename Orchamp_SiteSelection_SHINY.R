@@ -18,6 +18,8 @@ library(xlsx)
 
 ###################################################################################################################################
 
+DT.add.year.constraint <- data.frame()
+
 INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F)
 INIT.years = sort(unique(INIT$Yr_lancement))
 
@@ -32,6 +34,28 @@ for(grp in unique(INIT$Grp_Bota))
 comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
 constraint.notTogether = vector()
+if (length(na.exclude(unique(INIT$Incomp))) > 0)
+{
+  constraint.notTogether = foreach(paire = na.exclude(unique(INIT$Incomp)), .combine = "c") %do%
+  {
+    site1 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][1])]
+    site2 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][2])]
+    return(ifelse(paste0(c(site1, site2), collapse = "_") %in% comb.sites.2
+                  , paste0(c(site1, site2), collapse = "_")
+                  , paste0(c(site2, site1), collapse = "_")))
+  }
+}
+constraint.together = vector()
+if (length(na.exclude(unique(INIT$Paires))) > 0)
+{
+  constraint.together = foreach(paire = na.exclude(unique(INIT$Paires)), .combine = "c") %do%
+  {
+    site1 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][1])]
+    site2 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][2])]
+    return(ifelse(paste0(c(site1, site2), collapse = "_") %in% comb.sites.2
+                  , paste0(c(site1, site2), collapse = "_")
+                  , paste0(c(site2, site1), collapse = "_")))  }
+}
 
 ## Initialize table to store for each site : --------------------------------------------
 ##  last year of sampling
@@ -60,7 +84,7 @@ comb.INIT = foreach(ye = INIT.years) %do%
   comb.ALL = as.data.frame(t(combn(x = INIT$Gradient[which(INIT$Yr_lancement <= ye)]
                                    , m = length(which(INIT$Yr_lancement == ye)))))
   colnames(comb.ALL) = paste0("SITE_", 1:ncol(comb.ALL))
-
+  
   comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
   return(comb.ALL.vec)
 }
@@ -100,7 +124,7 @@ for(ye in as.character(INIT.years))
       }
     }
   }
- pool.INIT[[ye]] = pool.GLOB
+  pool.INIT[[ye]] = pool.GLOB
 }
 # names(pool.INIT) = INIT.years
 
@@ -293,8 +317,8 @@ ui <- fluidPage(
   tags$body(
     tags$style(HTML("
                     @import url('https://fonts.googleapis.com/css?family=Londrina+Solid:200,300|Medula+One|Slabo+27px|Francois+One');
-            "))
-  ),
+                    "))
+    ),
   
   fluidRow(
     style = HTML(paste0("color: #FFFFFF; background-color: #3a7da8; margin-top: 20px; margin-bottom: 20px; font-family: 'Londrina Solid', cursive;")),
@@ -335,13 +359,41 @@ ui <- fluidPage(
           )
         ),
         fluidRow(
+          br()
+          , column(3, numericInput(inputId = "spec.year"
+                                   , label = "Année"
+                                   , value = 2020
+                                   , min = 2020
+                                   , max = 2080
+                                   , step = 1
+                                   , width = "100%"))
+          , column(3, numericInput(inputId = "spec.no_sites"
+                                   , label = "Nb sites"
+                                   , min = 0
+                                   , max = 7
+                                   , value = NULL
+                                   , width = "100%"))
+          , column(6, selectInput(inputId = "spec.sites"
+                                  , label = "Sites"
+                                  , choices = sites.names
+                                  , selected = sites.names
+                                  , multiple = TRUE
+                                  , width = "100%"))
+        ),
+        fluidRow(
           column(8,
                  "",
                  actionButton(inputId = "add.year.constraint"
                               , label = "Année spécifique"
                               , icon = icon("plus")
                               , width = "100%")
-                 )
+          )
+        ),
+        fluidRow(
+          column(12,
+                 "",
+                 tableOutput(outputId = "DT.add.year.constraint"))
+          # uiOutput(outputId = "UI.add.year.constraint"))
         )
       ),
       
@@ -384,13 +436,22 @@ ui <- fluidPage(
         
         h3("B. Contraintes d'association"),
         p(em("Certains sites sont similaires en termes de conditions environnementales.
-             Des sites similaires ne peuvent être échantillonnés la même année.")),
+             Des sites similaires ne peuvent être échantillonnés la même année.
+             Au contraire, par souci de practicité d'échantillonnage, certains sites doivent toujours etre échantillonnés ensemble.")),
         
         selectInput(inputId = "constraint.notTogether"
                     , label = "Sites à ne pas échantillonner la même année"
                     , choices = comb.sites.2
                     , selected = constraint.notTogether
                     , multiple = TRUE
+                    , width = "100%"
+        ),
+        selectInput(inputId = "constraint.together"
+                    , label = "Sites à échantillonner la même année"
+                    , choices = comb.sites.2
+                    , selected = constraint.together
+                    , multiple = TRUE
+                    , width = "100%"
         )
         ),
       
@@ -583,6 +644,16 @@ server <- function(input, output, session) {
   session$onSessionEnded(stopApp)
   
   ####################################################################
+  
+  observeEvent(input$add.year.constraint, {
+    output$DT.add.year.constraint = renderTable({
+      DT.add.year.constraint <<- rbind(DT.add.year.constraint
+                                       , data.frame(YEAR = input$spec.year, NB_SITES = input$spec.no_sites))
+      return(DT.add.year.constraint)
+    })
+  })
+  
+  ####################################################################
   get_allParams = eventReactive(input$refresh, {
     cat("\n >> SAVING : getting sampling parameters...\n")
     
@@ -605,7 +676,11 @@ server <- function(input, output, session) {
     }
     if (length(input$constraint.notTogether) > 0)
     {
-      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_SIMILARITE", VALEUR = input$constraint.notTogether))
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_PAS_ENSEMBLE", VALEUR = input$constraint.notTogether))
+    }
+    if (length(input$constraint.together) > 0)
+    {
+      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_ENSEMBLE", VALEUR = input$constraint.together))
     }
     PARAMS = rbind(PARAMS, data.frame(PARAMETRE = c("SEUIL_ANNEES_PAS_ECHANTILLONNAGE"
                                                     , "PROB_AUGMENTATION_PAS_ECHANTILLONNAGE"
@@ -685,12 +760,19 @@ server <- function(input, output, session) {
       no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
       comb.ALL = comb.ALL[which(no_sites_inConstraint <= input$constraint.no_sites_max),]
     }
-    ## Remove combinations for association constraints
+    ## Remove combinations for association constraints : not together
     for(con in input$constraint.notTogether)
     {
       con = strsplit(con, "_")[[1]]
       no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
       comb.ALL = comb.ALL[which(no_sites_inConstraint < length(con)),]
+    }
+    ## Remove combinations for association constraints : together
+    for(con in input$constraint.together)
+    {
+      con = strsplit(con, "_")[[1]]
+      no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
+      comb.ALL = comb.ALL[which(no_sites_inConstraint %in% c(0,length(con))),]
     }
     
     comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
