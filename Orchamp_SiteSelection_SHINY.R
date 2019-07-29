@@ -290,9 +290,18 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
 # Define UI for application that plots features of movies
 ui <- fluidPage(
   
-  # theme = "cosmo",
-  titlePanel("ORCHAMP : sélection des sites"
-             , windowTitle = "ORCHAMP"),
+  tags$body(
+    tags$style(HTML("
+                    @import url('https://fonts.googleapis.com/css?family=Londrina+Solid:200,300|Medula+One|Slabo+27px|Francois+One');
+            "))
+  ),
+  
+  fluidRow(
+    style = HTML(paste0("color: #FFFFFF; background-color: #3a7da8; margin-top: 20px; margin-bottom: 20px; font-family: 'Londrina Solid', cursive;")),
+    column(12,
+           headerPanel("ORCHAMP : sélection des sites", windowTitle = "ORCHAMP")
+    )
+  ),
   
   # Sidebar layout with a input and output definitions
   sidebarLayout(
@@ -302,7 +311,7 @@ ui <- fluidPage(
       
       ## ----------------------------------------------------------
       wellPanel(
-        # style = "",
+        style = HTML("border-width:0px; background-color: rgba(207, 214, 227, 0.5);"),
         fluidRow(
           column(8,
                  "",
@@ -338,6 +347,7 @@ ui <- fluidPage(
       
       ## ----------------------------------------------------------
       wellPanel(
+        style = HTML("border-width:0px; background-color: rgba(207, 214, 227, 0.5);"),
         
         h3("A. Contraintes d'échantillonnage"),
         p(em("Les sites sont attribués aux différents partenaires impliqués.
@@ -370,6 +380,7 @@ ui <- fluidPage(
       
       ## ----------------------------------------------------------
       wellPanel(
+        style = HTML("border-width:0px; background-color: rgba(207, 214, 227, 0.5);"),
         
         h3("B. Contraintes d'association"),
         p(em("Certains sites sont similaires en termes de conditions environnementales.
@@ -385,6 +396,7 @@ ui <- fluidPage(
       
       ## ----------------------------------------------------------
       wellPanel(
+        style = HTML("border-width:0px; background-color: rgba(207, 214, 227, 0.5);"),
         
         h3("C. Evolution des probabilités de sélection"),
         
