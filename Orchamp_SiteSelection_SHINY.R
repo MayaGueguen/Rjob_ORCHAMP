@@ -19,18 +19,10 @@ library(xlsx)
 ###################################################################################################################################
 
 INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F)
+INIT.years = sort(unique(INIT$Yr_lancement))
 
-# sites.names = c("Anterne", "Argentiere", "Armenaz", "Bonette", "Caramagne", "Chaillol", "Chamrousse",
-#                 "Claree", "Devoluy Nord", "Devoluy Sud", "Lautaret", "Lauvitel", "Loriaz",
-#                 "Peclod", "Plan Aiguille", "Ristolas", "Valloire", "Vanoise", "Ventoux Sud")
 sites.names = INIT$Gradient
 
-# constraint.CBNA = c("Argentiere", "Armenaz", "Caramagne", "Chamrousse",
-#                     "Devoluy Nord", "Devoluy Sud", "Loriaz",
-#                     "Peclod", "Ristolas", "Vanoise")
-# constraint.PNE = c("Chaillol", "Lauvitel", "Plan Aiguille")
-# constraint.SAJF = c("Claree", "Lautaret", "Valloire")
-# constraint.CBNMED = c("Ventoux Sud", "Bonette")
 for(grp in unique(INIT$Grp_Bota))
 {
   assign(x = paste0("constraint.", grp)
@@ -41,6 +33,85 @@ comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
 constraint.notTogether = vector()
 
+## Initialize table to store for each site : --------------------------------------------
+##  last year of sampling
+##  number of successive sampling
+samp.INIT = foreach(ye = INIT.years) %do%
+{
+  samp.sites_tab = data.frame(SITE = INIT$Gradient[which(INIT$Yr_lancement <= ye)]
+                              , LAST_YEAR = 0
+                              , NB_YEAR_SUCC = 0)
+  for (i in 1:nrow(samp.sites_tab))
+  {
+    samp.sites_tab$LAST_YEAR[i] = ye - INIT$Yr_lancement[which(INIT$Gradient == samp.sites_tab$SITE[i])]
+  }
+  return(samp.sites_tab)
+}
+names(samp.INIT) = INIT.years
+
+## Initialize table to store each possible combination of sites -------------------------
+## and probability of each combination
+
+comb.INIT = foreach(ye = INIT.years) %do%
+{
+  cat(" ", ye)
+  
+  ## Create all combinations of sites
+  comb.ALL = as.data.frame(t(combn(x = INIT$Gradient[which(INIT$Yr_lancement <= ye)]
+                                   , m = length(which(INIT$Yr_lancement == ye)))))
+  colnames(comb.ALL) = paste0("SITE_", 1:ncol(comb.ALL))
+
+  comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
+  return(comb.ALL.vec)
+}
+names(comb.INIT) = INIT.years
+
+pool.INIT = list()
+for(ye in as.character(INIT.years))
+{
+  cat(" ", ye)
+  pool.GLOB = data.table(COMB = comb.INIT[[ye]], PROB = 1)
+  pool.GLOB = as.data.frame(pool.GLOB)
+  
+  ## Get results of previous year, if exist
+  # if ((as.numeric(ye) - 1) %in% names(pool.INIT))
+  # {
+  #   
+  # }
+  
+  for (i in 1:nrow(samp.INIT[[ye]]))
+  {
+    si = samp.INIT[[ye]]$SITE[i]
+    
+    ## Get all the combinations in which the site is present
+    ind = grep(si, pool.GLOB$COMB)
+    
+    if (si %in% INIT$Gradient[which(INIT$Yr_lancement == ye)])
+    {
+      ## Anyway, reduce probability of sampling the site next year
+      pool.GLOB$PROB[ind] = pool.GLOB$PROB[ind] * 0.4 ##prob.decrease.sampThisYear
+    } else
+    {
+      ## Increase probability of sampling next year
+      ## if the site has not been sampled for more than X years
+      if(samp.INIT[[ye]]$LAST_YEAR[i] > 2) ##noXYears)
+      {
+        pool.GLOB$PROB[ind] = pool.GLOB$PROB[ind] * 0.25 #prob.increase.sampXYears
+      }
+    }
+  }
+ pool.INIT[[ye]] = pool.GLOB
+}
+# names(pool.INIT) = INIT.years
+
+
+## SAVE INITIALIZATION RESULTS
+for(ye in as.character(INIT.years)) 
+{
+  res = data.frame(YEAR = ye, SITE = INIT$Gradient[which(INIT$Yr_lancement == ye)])
+  SAV = list(SEL = res, POOL = pool.INIT[[ye]], SAMP = samp.INIT[[ye]])
+  save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment())
+}
 
 ###################################################################################################################################
 # DEFINING SAMPLING FUNCTION 
@@ -63,7 +134,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
   # cat(" ", ye)
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
   {
-    # cat("\n 1. Sites selection...")
+    cat("\n 1. Sites selection...")
     sites.sel = sample(x = pool$COMB
                        , size = 1
                        , prob = pool$PROB)
@@ -71,7 +142,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     
     ## --------------------------------------------------------------------------
     ## FOR ALL AVAILABLE SITES
-    # cat("\n 2. Update of site informations...")
+    cat("\n 2. Update of site informations...")
     for(si in samp$SITE)
     {
       ind_si = which(samp$SITE == si)
@@ -119,7 +190,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
     save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment())
   } else
   {
-    # cat("\n Loading previous results...\n")
+    cat("\n Loading previous results...\n")
     SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment()))
     res = SAV$SEL
     pool = SAV$POOL
@@ -189,7 +260,7 @@ FUN_SELECT_sites = function(ye, pool, samp, firstOK = FALSE
         save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.end - 1, ".RData"), envir = environment())
       }
       
-      # cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
+      cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
       pool$PROB = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
@@ -231,10 +302,11 @@ ui <- fluidPage(
       
       ## ----------------------------------------------------------
       wellPanel(
+        # style = "",
         fluidRow(
           column(8,
                  "",
-                 sliderInput("year.range"
+                 sliderInput(inputId = "year.range"
                              , label = "Années d'échantillonnage"
                              , min = 2020
                              , max = 2080
@@ -252,6 +324,15 @@ ui <- fluidPage(
                               , step = 1
                  )
           )
+        ),
+        fluidRow(
+          column(8,
+                 "",
+                 actionButton(inputId = "add.year.constraint"
+                              , label = "Année spécifique"
+                              , icon = icon("plus")
+                              , width = "100%")
+                 )
         )
       ),
       
@@ -491,6 +572,8 @@ server <- function(input, output, session) {
   
   ####################################################################
   get_allParams = eventReactive(input$refresh, {
+    cat("\n >> SAVING : getting sampling parameters...\n")
+    
     year.win = 6
     PARAMS = data.frame(PARAMETRE = c("ANNEE_DEPART"
                                       , "ANNEE_FIN"
@@ -500,21 +583,13 @@ server <- function(input, output, session) {
                                      , input$year.range[2]
                                      , input$samp.no_sites
                                      , input$constraint.no_sites_max))
-    if (length(input$constraint.SAJF) > 0)
+    for(grp in unique(INIT$Grp_Bota))
     {
-      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_SAJF", VALEUR = input$constraint.SAJF))
-    }
-    if (length(input$constraint.PNE) > 0)
-    {
-      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_PNE", VALEUR = input$constraint.PNE))
-    }
-    if (length(input$constraint.CBNA) > 0)
-    {
-      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_CBNA", VALEUR = input$constraint.CBNA))
-    }
-    if (length(input$constraint.CBNMED) > 0)
-    {
-      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_CBNMED", VALEUR = input$constraint.CBNMED))
+      if (length(get(paste0("input$constraint.", grp))) > 0)
+      {
+        PARAMS = rbind(PARAMS, data.frame(PARAMETRE = paste0("CONTRAINTE_", grp)
+                                          , VALEUR = get(paste0("input$constraint.", grp))))
+      }
     }
     if (length(input$constraint.notTogether) > 0)
     {
@@ -583,15 +658,16 @@ server <- function(input, output, session) {
   ####################################################################
   get_comb.ALL.vec = eventReactive(input$refresh, {
     
+    cat("\n >> PREPARATION : getting sites combinations...\n")
+    
     ## Create all combinations of sites
     comb.ALL = as.data.frame(t(combn(x = sites.names, m = input$samp.no_sites)))
     colnames(comb.ALL) = paste0("SITE_", 1:ncol(comb.ALL))
     
     ## Remove combinations for number constraints
-    constraint.list = list(input$constraint.CBNA
-                           , input$constraint.CBNMED
-                           , input$constraint.PNE
-                           , input$constraint.SAJF)
+    eval(parse(text = paste0('constraint.list = list('
+                             , paste0("input$constraint.", unique(INIT$Grp_Bota), collapse = ",")
+                             , ')')))
     for(con in constraint.list)
     {
       no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
@@ -611,6 +687,7 @@ server <- function(input, output, session) {
   
   ####################################################################
   get_RES = eventReactive(input$refresh, {
+    cat("\n >> PREPARATION : initialize parameters...\n")
     
     ## Get arguments
     sites.no = length(sites.names)
@@ -635,8 +712,7 @@ server <- function(input, output, session) {
     
     ## Initialize table to store each possible combination of sites
     ## and probability of each combination
-    pool.GLOB = data.frame(COMB = comb.ALL.vec
-                           , PROB = rep(1, length(comb.ALL.vec)))
+    pool.GLOB = as.data.frame(data.table(COMB = comb.ALL.vec, PROB = 1))
     
     if (!input$startFromSave)
     {
@@ -655,6 +731,8 @@ server <- function(input, output, session) {
     }
     
     ## --------------------------------------------------------------------------
+    cat("\n >> STARTING !!\n")
+    
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                  , min = 0, max = year.end - year.start + 1, {
                    RES = foreach(ye.end = seq(year.start + (year.win - 1), year.end, 1)) %do%
