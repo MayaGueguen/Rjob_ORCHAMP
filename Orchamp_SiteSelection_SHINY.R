@@ -14,19 +14,28 @@ library(shinycssloaders)
 library(DT)
 library(data.table)
 library(zip)
+library(xlsx)
 
 ###################################################################################################################################
 
-sites.names = c("Anterne", "Argentiere", "Armenaz", "Bonette", "Caramagne", "Chaillol", "Chamrousse",
-                "Claree", "Devoluy Nord", "Devoluy Sud", "Lautaret", "Lauvitel", "Loriaz",
-                "Peclod", "Plan Aiguille", "Ristolas", "Valloire", "Vanoise", "Ventoux Sud")
+INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F)
 
-constraint.CBNA = c("Argentiere", "Armenaz", "Caramagne", "Chamrousse",
-                    "Devoluy Nord", "Devoluy Sud", "Loriaz",
-                    "Peclod", "Ristolas", "Vanoise")
-constraint.PNE = c("Chaillol", "Lauvitel", "Plan Aiguille")
-constraint.SAJF = c("Claree", "Lautaret", "Valloire")
-constraint.CBNMED = c("Ventoux Sud", "Bonette")
+# sites.names = c("Anterne", "Argentiere", "Armenaz", "Bonette", "Caramagne", "Chaillol", "Chamrousse",
+#                 "Claree", "Devoluy Nord", "Devoluy Sud", "Lautaret", "Lauvitel", "Loriaz",
+#                 "Peclod", "Plan Aiguille", "Ristolas", "Valloire", "Vanoise", "Ventoux Sud")
+sites.names = INIT$Gradient
+
+# constraint.CBNA = c("Argentiere", "Armenaz", "Caramagne", "Chamrousse",
+#                     "Devoluy Nord", "Devoluy Sud", "Loriaz",
+#                     "Peclod", "Ristolas", "Vanoise")
+# constraint.PNE = c("Chaillol", "Lauvitel", "Plan Aiguille")
+# constraint.SAJF = c("Claree", "Lautaret", "Valloire")
+# constraint.CBNMED = c("Ventoux Sud", "Bonette")
+for(grp in unique(INIT$Grp_Bota))
+{
+  assign(x = paste0("constraint.", grp)
+         , value = INIT$Gradient[which(INIT$Grp_Bota == grp)])
+}
 
 comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
@@ -263,51 +272,17 @@ ui <- fluidPage(
         ),
         
         fluidRow(
-          column(6,
-                 "",
-                 selectInput(inputId = "constraint.CBNA"
-                             , label = "Sites à charge du CBNA"
-                             , choices = sites.names
-                             , selected = constraint.CBNA
-                             , multiple = TRUE
-                 )
-          ),
-          column(6,
-                 "",
-                 fluidRow(
-                   column(12,
-                          "",
-                          selectInput(inputId = "constraint.CBNMED"
-                                      , label = "Sites à charge du CBNMED"
-                                      , choices = sites.names
-                                      , selected = constraint.CBNMED
-                                      , multiple = TRUE
-                          )
+          lapply(unique(INIT$Grp_Bota), function(grp) {
+            column(12,
+                   selectInput(inputId = paste0("constraint.", grp)
+                               , label = paste0("Sites à charge de ", grp)
+                               , choices = sites.names
+                               , selected = get(paste0("constraint.", grp))
+                               , multiple = TRUE
+                               , width = "100%"
                    )
-                 ),
-                 fluidRow(
-                   column(12,
-                          "",
-                          selectInput(inputId = "constraint.PNE"
-                                      , label = "Sites à charge du PNE"
-                                      , choices = sites.names
-                                      , selected = constraint.PNE
-                                      , multiple = TRUE
-                          )
-                   )
-                 ),
-                 fluidRow(
-                   column(12,
-                          "",
-                          selectInput(inputId = "constraint.SAJF"
-                                      , label = "Sites à charge de la SAJF"
-                                      , choices = sites.names
-                                      , selected = constraint.SAJF
-                                      , multiple = TRUE
-                          )
-                   )
-                 )
-          )
+            )
+          })
         )
         ),
       
@@ -561,7 +536,7 @@ server <- function(input, output, session) {
                                                    , year.win
                                                    , floor((input$year.range[2] - input$year.range[1]) / year.win)
                                                    , input$prob.decrease.notWorking)))
-
+    
     if (input$saveResults)
     {
       fwrite(PARAMS, file = paste0(get_dirSave(), "/PARAMS_echantillonnage_", get_params2(), ".txt")
@@ -768,7 +743,7 @@ server <- function(input, output, session) {
   output$RES_SEL = renderDataTable({
     get_RES_SEL()
   })
-
+  
   
   ####################################################################
   get_plot2 = eventReactive(input$refresh, {
@@ -780,7 +755,7 @@ server <- function(input, output, session) {
       geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5)
                  , lty = 2, lwd = 1, color = "grey") +
       geom_hline(yintercept = mean(table(RES$SEL$SITE))
-                    , lty = 2, lwd = 1, color = "brown") +
+                 , lty = 2, lwd = 1, color = "brown") +
       labs(title = "Nombre d'années échantillonnées par site\n"
            , subtitle = paste0("En gris, le nombre minimal d'échantillonnages par site requis.\n"
                                , "En rouge, le nombre moyen d'échantillonnages par site avec la sélection calculée.\n")) +
