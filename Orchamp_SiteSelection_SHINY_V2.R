@@ -60,71 +60,6 @@ if (length(na.exclude(unique(INIT$Paires))) > 0)
                   , paste0(c(site2, site1), collapse = "_")))  }
 }
 
-## Initialize table to store for each site : --------------------------------------------
-##  last year of sampling
-##  number of successive sampling
-samp.INIT = list()
-for(ye in as.character(INIT.years))
-{
-  cat(" ", ye)
-  samp.sites_tab = data.frame(SITE = INIT$Gradient #[which(INIT$Yr_lancement <= ye)]
-                              , LAST_YEAR = 0
-                              , NB_YEAR_SUCC = 0
-                              , PROB = ifelse(INIT$Yr_lancement <= ye, 1, 0)
-                              , stringsAsFactors = FALSE)
-  
-  ## UPDATE LAST_YEAR
-  for (i in 1:nrow(samp.sites_tab))
-  {
-    if (samp.sites_tab$SITE[i] %in% INIT$Gradient[which(INIT$Yr_lancement <= ye)])
-    {
-      samp.sites_tab$LAST_YEAR[i] = as.numeric(ye) - INIT$Yr_lancement[which(INIT$Gradient == samp.sites_tab$SITE[i])]
-    }
-  }
-
-  ## UPDATE PROB
-  ## Get results of previous year, if exist
-  if ((as.numeric(ye) - 1) %in% names(samp.INIT))
-  {
-    tab = samp.INIT[[as.character(as.numeric(ye) - 1)]]
-    for (i in 1:nrow(tab))
-    {
-      if (tab$SITE[i] %in% samp.sites_tab$SITE && tab$PROB[i] > 0)
-      {
-        samp.sites_tab$PROB[which(samp.sites_tab$SITE == tab$SITE[i])] = tab$PROB[i]
-      }
-    }
-  }
-  for (i in 1:nrow(samp.sites_tab))
-  {
-    if (samp.sites_tab$SITE[i] %in% INIT$Gradient[which(INIT$Yr_lancement == ye)])
-    {
-      ## Anyway, reduce probability of sampling the site next year
-      samp.sites_tab$PROB[i] = samp.sites_tab$PROB[i] * (1 - 0.4) ##prob.decrease.sampThisYear
-    } else
-    {
-      ## Increase probability of sampling next year
-      ## if the site has not been sampled for more than X years
-      if(samp.sites_tab$LAST_YEAR[i] > 2) ##noXYears)
-      {
-        samp.sites_tab$PROB[i] = samp.sites_tab$PROB[i] * (1 + 0.25) #prob.increase.sampXYears
-      }
-    }
-  }
-  samp.INIT[[ye]] = samp.sites_tab
-}
-
-
-## SAVE INITIALIZATION RESULTS
-for(ye in as.character(INIT.years))
-{
-  res = data.frame(YEAR = ye
-                   , SITE = INIT$Gradient[which(INIT$Yr_lancement == ye)]
-                   , stringsAsFactors = FALSE)
-  # SAV = list(SEL = res, POOL = pool.INIT[[ye]], SAMP = samp.INIT[[ye]])
-  SAV = list(SEL = res, SAMP = samp.INIT[[ye]])
-  save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment())
-}
 
 ###################################################################################################################################
 # DEFINING SAMPLING FUNCTION 
@@ -132,7 +67,6 @@ for(ye in as.character(INIT.years))
 
 ## Apply sampling function for each required year
 FUN_SELECT_sites = function(ye
-                            # , pool
                             , samp
                             , firstOK = FALSE
                             , year.start, year.end ## fixed inputs !!
@@ -261,7 +195,6 @@ FUN_SELECT_sites = function(ye
       if(!firstOK)
       {
         ## First year of test : remove all files
-        # if (ye == year.start + (test.win - 1))
         if (ye == year.end - (test.win - 1))
         {
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start), ".RData"), file.remove)
@@ -718,7 +651,7 @@ server <- function(input, output, session) {
     }
   })
   
-  get_params1 = eventReactive(input$refresh, {
+  get_params1 = reactive({
     year.win = 6
     params = paste0(input$year.range[1], "_"
                     , input$year.range[2], "_"
@@ -731,7 +664,7 @@ server <- function(input, output, session) {
     params
   })
   
-  get_version = eventReactive(input$refresh, {
+  get_version = eventReactive(input$year.range, {
     if (input$saveResults)
     {
       params = paste0(input$year.range[1], "_", input$year.range[2])
@@ -740,59 +673,76 @@ server <- function(input, output, session) {
     }
   })
   
-  get_params2 = eventReactive(input$refresh, {
+  get_params2 = eventReactive(input$year.range, {
     paste0("version", get_version(), "_", input$year.range[1], "_", input$year.range[2])
   })
   
-  get_params3 = eventReactive(input$refresh, {
+  get_params3 = eventReactive(input$year.range, {
     paste0("version", get_version(), "_", get_params1())
   })
   
-  get_dirSave = eventReactive(input$refresh, {
+  get_dirSave = eventReactive(input$year.range, {
     dirSave = paste0("ORCHAMP_selection_", get_params2())
     if (input$saveResults) dir.create(dirSave)
     dirSave
   })
   
-  ####################################################################
-  # get_comb.ALL.vec = eventReactive(input$refresh, {
-  #   
-  #   cat("\n >> PREPARATION : getting sites combinations...\n")
-  #   
-  #   ## Create all combinations of sites
-  #   comb.ALL = as.data.frame(t(combn(x = sites.names, m = input$samp.no_sites)))
-  #   colnames(comb.ALL) = paste0("SITE_", 1:ncol(comb.ALL))
-  #   
-  #   ## Remove combinations for number constraints
-  #   eval(parse(text = paste0('constraint.list = list('
-  #                            , paste0("input$constraint.", unique(INIT$Grp_Bota), collapse = ",")
-  #                            , ')')))
-  #   for(con in constraint.list)
-  #   {
-  #     no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
-  #     comb.ALL = comb.ALL[which(no_sites_inConstraint <= input$constraint.no_sites_max),]
-  #   }
-  #   ## Remove combinations for association constraints : not together
-  #   for(con in input$constraint.notTogether)
-  #   {
-  #     con = strsplit(con, "_")[[1]]
-  #     no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
-  #     comb.ALL = comb.ALL[which(no_sites_inConstraint < length(con)),]
-  #   }
-  #   ## Remove combinations for association constraints : together
-  #   for(con in input$constraint.together)
-  #   {
-  #     con = strsplit(con, "_")[[1]]
-  #     no_sites_inConstraint = apply(comb.ALL, 1, function(x){ sum(x %in% con)})
-  #     comb.ALL = comb.ALL[which(no_sites_inConstraint %in% c(0,length(con))),]
-  #   }
-  #   
-  #   comb.ALL.vec = apply(comb.ALL, 1, function(x) paste0(x, collapse = "_"))
-  #   comb.ALL.vec
-  # })
   
   ####################################################################
-  get_RES = eventReactive(input$refresh, {
+  output$dirRes_selector = renderUI({
+    dir_names = list.dirs(full.names = FALSE
+                          , recursive = FALSE)
+    dir_names = dir_names[grep("^ORCHAMP_", dir_names)]
+    
+    selectInput(inputId = "dirRes"
+                , label = "Sélectionner un dossier"
+                , choices = c("", dir_names)
+                , selected = NULL
+                , multiple = FALSE
+    )
+  })
+  
+  observeEvent(input$refresh, {
+    output$dirRes_selector = renderUI({
+      dir_names = list.dirs(full.names = FALSE
+                            , recursive = FALSE)
+      dir_names = dir_names[grep("^ORCHAMP_", dir_names)]
+      
+      selectInput(inputId = "dirRes"
+                  , label = "Sélectionner un dossier"
+                  , choices = c("", dir_names)
+                  , selected = NULL
+                  , multiple = FALSE
+      )
+    })
+  })
+  
+  ####################################################################
+  get_RES = eventReactive(tagList(input$load, input$refresh), {
+    
+    cat(" oyoo")
+    year.start = input$year.range[1]
+    year.end = input$year.range[2]
+    samp.years = seq(year.start, year.end, 1)
+    
+    ## LOAD the correct RES
+    SEL = foreach(ye = samp.years, .combine = "rbind") %do%
+    {
+      file_name = paste0("./", input$dirRes, "/SAUVEGARDE_ANNEE_", ye, ".RData")
+      if (file.exists(file_name))
+      {
+        SAV = get(load(file_name))
+        return(SAV$SEL)
+      }
+    }
+    # load(paste0("./", input$dirRes, "/SAUVEGARDE_ANNEE_", year.start, ".RData"))
+    RES = list(SEL = SEL, SAMP = 1) #SAV$SAMP)
+    
+    return(RES)
+  })
+
+  ####################################################################
+  get_CALC = observeEvent(input$refresh, {
     cat("\n >> PREPARATION : initialize parameters...\n")
     
     ## Get arguments
@@ -808,7 +758,6 @@ server <- function(input, output, session) {
     prob.decrease.sampSuccYears = 1 - input$prob.decrease.sampSuccYears
     prob.decrease.notWorking = 1 - input$prob.decrease.notWorking
     
-    # comb.ALL.vec = get_comb.ALL.vec()
     
     ## --------------------------------------------------------------------------
     ## Initialize table to store for each site :
@@ -820,20 +769,14 @@ server <- function(input, output, session) {
                                 , PROB = 1
                                 , stringsAsFactors = FALSE)
     
-    ## Initialize table to store each possible combination of sites
-    ## and probability of each combination
-    # pool.GLOB = as.data.frame(data.table(COMB = comb.ALL.vec, PROB = 1))
-    
-    print("YAAAAAAAAAAAAAAAAAAAAAA")
     if (!input$startFromSave)
     {
       sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
     } else
     {
-      print("YOOOOO")
       if (!is.null(input$dirRes) && nchar(input$dirRes) > 0)
       {
-        # sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+        sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
         prev_files = list.files(path = input$dirRes
                                 , pattern = "SAUVEGARDE_ANNEE_"
                                 , full.names = FALSE)
@@ -897,48 +840,44 @@ server <- function(input, output, session) {
                                                , to = paste0(dirSave, "/", x)))
     }
     
-    ## LOAD the correct RES
-    SEL = foreach(ye = samp.years, .combine = "rbind") %do%
-    {
-      SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
-      return(SAV$SEL)
-    }
-    load(paste0("SAUVEGARDE_ANNEE_", year.start, ".RData"))
-    # RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
-    RES = list(SEL = SEL, SAMP = SAV$SAMP)
-
-    return(RES)
-    # return(TRUE)
+    # ## LOAD the correct RES
+    # SEL = foreach(ye = samp.years, .combine = "rbind") %do%
+    # {
+    #   SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
+    #   return(SAV$SEL)
+    # }
+    # load(paste0("SAUVEGARDE_ANNEE_", year.start, ".RData"))
+    # RES = list(SEL = SEL, SAMP = SAV$SAMP)
+    # 
+    # return(RES)
   })
   
   
   ####################################################################
-  get_RES_SEL = eventReactive(input$refresh, {
+  observeEvent(get_RES(), {
     RES = get_RES()
     RES = RES$SEL
-    RES.split = split(RES, RES$YEAR)
-    RES = foreach(x = RES.split, .combine = "rbind") %do%
-    {
-      eval(parse(text = paste0("res = data.frame(",paste0("SITE", 1:input$samp.no_sites
-                                                          ," = x$SITE[", 1:input$samp.no_sites, "]", collapse = ",")
-                               ,")")))
-      return(res)
-    }
-    rownames(RES) = names(RES.split)
     
-    if (input$saveResults)
+    if (!is.null(RES) && nrow(RES) > 0)
     {
-      tmp_RES = RES
-      tmp_RES = cbind(data.frame(ANNEE = rownames(tmp_RES)), tmp_RES)
-      fwrite(tmp_RES, file = paste0(get_dirSave(), "/TABLE_echantillonnage_", get_params3(), ".txt")
-             , sep = "\t", quote = FALSE, row.names = FALSE)
+      RES.split = split(RES, RES$YEAR)
+      RES = foreach(x = RES.split, .combine = "rbind") %do%
+      {
+        eval(parse(text = paste0("res = data.frame(",paste0("SITE", 1:input$samp.no_sites
+                                                            ," = x$SITE[", 1:input$samp.no_sites, "]", collapse = ",")
+                                 ,")")))
+        return(res)
+      }
+      RES = cbind(data.frame(ANNEE = names(RES.split)), RES)
+      
+      if (input$saveResults)
+      {
+        fwrite(RES, file = paste0(get_dirSave(), "/TABLE_echantillonnage_", get_params3(), ".txt")
+               , sep = "\t", quote = FALSE, row.names = FALSE)
+      }
+      
+      output$RES_SEL = renderDataTable({ as.data.table(RES) })
     }
-    
-    RES
-  })
-  
-  output$RES_SEL = renderDataTable({
-    get_RES_SEL()
   })
   
   
@@ -1044,27 +983,6 @@ server <- function(input, output, session) {
   
   output$plot4 = renderPlot({
     print(get_plot4())
-  })
-  
-  ####################################################################
-  output$dirRes_selector = renderUI({
-    selectInput(inputId = "dirRes"
-                , label = "Sélectionner un dossier"
-                , choices = c("",list.files(pattern = "^ORCHAMP_"))
-                , selected = NULL
-                , multiple = FALSE
-    )
-  })
-  
-  observeEvent(input$refresh, {
-    output$dirRes_selector = renderUI({
-      selectInput(inputId = "dirRes"
-                  , label = "Sélectionner un dossier"
-                  , choices = c("",list.files(pattern = "^ORCHAMP_"))
-                  , selected = NULL
-                  , multiple = FALSE
-      )
-    })
   })
   
   ####################################################################
