@@ -67,16 +67,19 @@ samp.INIT = list()
 for(ye in as.character(INIT.years))
 {
   cat(" ", ye)
-  samp.sites_tab = data.frame(SITE = INIT$Gradient[which(INIT$Yr_lancement <= ye)]
+  samp.sites_tab = data.frame(SITE = INIT$Gradient #[which(INIT$Yr_lancement <= ye)]
                               , LAST_YEAR = 0
                               , NB_YEAR_SUCC = 0
-                              , PROB = 1
+                              , PROB = ifelse(INIT$Yr_lancement <= ye, 1, 0)
                               , stringsAsFactors = FALSE)
   
   ## UPDATE LAST_YEAR
   for (i in 1:nrow(samp.sites_tab))
   {
-    samp.sites_tab$LAST_YEAR[i] = as.numeric(ye) - INIT$Yr_lancement[which(INIT$Gradient == samp.sites_tab$SITE[i])]
+    if (samp.sites_tab$SITE[i] %in% INIT$Gradient[which(INIT$Yr_lancement <= ye)])
+    {
+      samp.sites_tab$LAST_YEAR[i] = as.numeric(ye) - INIT$Yr_lancement[which(INIT$Gradient == samp.sites_tab$SITE[i])]
+    }
   }
 
   ## UPDATE PROB
@@ -86,7 +89,7 @@ for(ye in as.character(INIT.years))
     tab = samp.INIT[[as.character(as.numeric(ye) - 1)]]
     for (i in 1:nrow(tab))
     {
-      if (tab$SITE[i] %in% samp.sites_tab$SITE)
+      if (tab$SITE[i] %in% samp.sites_tab$SITE && tab$PROB[i] > 0)
       {
         samp.sites_tab$PROB[which(samp.sites_tab$SITE == tab$SITE[i])] = tab$PROB[i]
       }
@@ -97,14 +100,14 @@ for(ye in as.character(INIT.years))
     if (samp.sites_tab$SITE[i] %in% INIT$Gradient[which(INIT$Yr_lancement == ye)])
     {
       ## Anyway, reduce probability of sampling the site next year
-      samp.sites_tab$PROB[i] = samp.sites_tab$PROB[i] * 0.4 ##prob.decrease.sampThisYear
+      samp.sites_tab$PROB[i] = samp.sites_tab$PROB[i] * (1 - 0.4) ##prob.decrease.sampThisYear
     } else
     {
       ## Increase probability of sampling next year
       ## if the site has not been sampled for more than X years
       if(samp.sites_tab$LAST_YEAR[i] > 2) ##noXYears)
       {
-        samp.sites_tab$PROB[i] = samp.sites_tab$PROB[i] * 0.25 #prob.increase.sampXYears
+        samp.sites_tab$PROB[i] = samp.sites_tab$PROB[i] * (1 + 0.25) #prob.increase.sampXYears
       }
     }
   }
@@ -115,7 +118,9 @@ for(ye in as.character(INIT.years))
 ## SAVE INITIALIZATION RESULTS
 for(ye in as.character(INIT.years))
 {
-  res = data.frame(YEAR = ye, SITE = INIT$Gradient[which(INIT$Yr_lancement == ye)])
+  res = data.frame(YEAR = ye
+                   , SITE = INIT$Gradient[which(INIT$Yr_lancement == ye)]
+                   , stringsAsFactors = FALSE)
   # SAV = list(SEL = res, POOL = pool.INIT[[ye]], SAMP = samp.INIT[[ye]])
   SAV = list(SEL = res, SAMP = samp.INIT[[ye]])
   save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment())
@@ -142,21 +147,17 @@ FUN_SELECT_sites = function(ye
                             , test.win ## fixed inputs !!
 )
 {
-  # cat(" ", ye)
+  cat("\n *-*-*-*-*-*-*-* ", ye, " *-*-*-*-*-*-*-* \n")
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
   {
-    cat("\n 1. Sites selection...")
-    # sites.sel = sample(x = pool$COMB
-    #                    , size = 1
-    #                    , prob = pool$PROB)
-    # sites = strsplit(as.character(sites.sel), "_")[[1]]
+    # cat("\n 1. Sites selection...")
     sites = sample(x = samp$SITE
                        , size = samp.no_sites
                        , prob = samp$PROB)
     
     ## --------------------------------------------------------------------------
     ## FOR ALL AVAILABLE SITES
-    cat("\n 2. Update of site informations...")
+    # cat("\n 2. Update of site informations...")
     for(si in samp$SITE)
     {
       ind_si = which(samp$SITE == si)
@@ -164,8 +165,8 @@ FUN_SELECT_sites = function(ye
       ## Is the site selected this year ? ---------------------------------------
       if (si %in% sites)
       {
-        ## Get all the combinations in which the site is present
-        # ind = grep(si, pool$COMB)
+        ## Keep track of last year of sampling : 0
+        samp$LAST_YEAR[ind_si] = 0
         
         ## Keep track of number of previous successive sampling : +1
         samp$NB_YEAR_SUCC[ind_si] = samp$NB_YEAR_SUCC[ind_si] + 1
@@ -191,9 +192,7 @@ FUN_SELECT_sites = function(ye
         ## if the site has not been sampled for more than X years
         if(samp$LAST_YEAR[ind_si] > noXYears)
         {
-          # ind = grep(si, pool$COMB)
           samp$PROB[ind_si] = samp$PROB[ind_si] * prob.increase.sampXYears
-          # pool$PROB[ind] = pool$PROB[ind] * prob.increase.sampXYears
         }
       }
     }
@@ -201,22 +200,19 @@ FUN_SELECT_sites = function(ye
     ## --------------------------------------------------------------------------
     ## RESULTS
     res = data.frame(YEAR = ye, SITE = sites)
-    # SAV = list(SEL = res, POOL = pool, SAMP = samp)
     SAV = list(SEL = res, SAMP = samp)
     save(SAV, file = paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment())
   } else
   {
-    cat("\n Loading previous results...\n")
+    # cat("\n Loading previous results...\n")
     SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData"), envir = environment()))
     res = SAV$SEL
-    # pool = SAV$POOL
     samp = SAV$SAMP
   }
   
   if(ye < year.end)
   {
     res_bis = FUN_SELECT_sites(ye = ye + 1
-                               # , pool = pool
                                , samp = samp
                                , firstOK = firstOK
                                , year.start = year.start
@@ -232,7 +228,7 @@ FUN_SELECT_sites = function(ye
                                , test.win = test.win
     )
     
-    cat("\n 3. Evaluating results...")
+    # cat("\n 3. Evaluating results...")
     
     ## EVALUATION OF RESULTS
     cond.freq = cond.num = TRUE
@@ -241,13 +237,16 @@ FUN_SELECT_sites = function(ye
     ## Frequency ?
     if (ye <= year.end - (test.win - 1))
     {
+      cat("\n ==> TEST FOR FREQUENCY IN YEAR ", ye, " <== \n")
       year.window = seq(ye, ye + (test.win - 1))
       SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
       cond.freq = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= 1)) == nrow(samp))
+      cond.freq.wrongSites = names(SITE_table)[which(SITE_table == 0)]
     }
     ## Total number ?
     if (ye == year.start)
     {
+      cat("\n ==> TEST FOR TOTAL NUMBER IN YEAR ", ye, " <== \n")
       SITE_table = table(res_tmp$SITE)
       cond.num = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= test.ref)) == nrow(samp))
     }
@@ -255,7 +254,6 @@ FUN_SELECT_sites = function(ye
     ## --------------------------------------------------------------------------
     if(cond.freq && cond.num)
     {
-      # return(list(SEL = rbind(res, res_bis$SEL), POOL = res_bis$POOL, SAMP = res_bis$SAMP))
       return(list(SEL = rbind(res, res_bis$SEL), SAMP = res_bis$SAMP))
     } else
     {
@@ -263,33 +261,38 @@ FUN_SELECT_sites = function(ye
       if(!firstOK)
       {
         ## First year of test : remove all files
-        if (ye == year.start + (test.win - 1))
+        # if (ye == year.start + (test.win - 1))
+        if (ye == year.end - (test.win - 1))
         {
           sapply(paste0("SAUVEGARDE_ANNEE_", seq(year.end, year.start), ".RData"), file.remove)
         } 
       } else
-      { ## Remove only last year file
+      {
+        ## Remove only last year file
         SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end, ".RData"), envir = environment()))
-        SAV.sites = SAV$SEL$SITE
+        SAV.sites = as.character(SAV$SEL$SITE)
         sapply(paste0("SAUVEGARDE_ANNEE_", year.end, ".RData"), file.remove)
         
         SAV = get(load(paste0("SAUVEGARDE_ANNEE_", year.end - 1, ".RData"), envir = environment()))
-        for(si in SAV.sites)
+        # for(si in SAV.sites)
+        for(si in cond.freq.wrongSites)
         {
-          # ind = grep(si, SAV$POOL$COMB)
-          # SAV$POOL$PROB[ind] = SAV$POOL$PROB[ind] * prob.decrease.notWorking
-          # ind = grep(si, SAV$POOL$COMB)
-          SAV$SAMP$PROB[which(SAV$SAMP$SITE == si)] = SAV$POOL$PROB[which(SAV$SAMP$SITE == si)] * prob.decrease.notWorking
+          ind_si = which(SAV$SAMP$SITE == si)
+          SAV$SAMP$PROB[ind_si] = SAV$SAMP$PROB[ind_si] * prob.decrease.notWorking
         }
+        # if (min(SAV$SAMP$PROB) < 0.0001)
+        # {
+        #   SAV$SAMP$PROB = SAV$SAMP$PROB * 1000
+        # }
         save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.end - 1, ".RData"), envir = environment())
       }
       
-      cat("\n /!\\ Certaines conditions ne sont pas remplies : redémarrage du calcul /!\\ \n")
+      cat("\n /!\\ Certaines conditions ne sont pas remplies (frequency : ", cond.freq
+          , ", total number : ", cond.num, ") : redémarrage du calcul /!\\ \n")
       samp$PROB = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
       return(FUN_SELECT_sites(ye = year.start
-                              # , pool = pool
                               , samp = samp
                               , firstOK = firstOK
                               , year.start = year.start
@@ -308,7 +311,6 @@ FUN_SELECT_sites = function(ye
     
   } else
   {
-    # return(list(SEL = res, POOL = pool, SAMP = samp))
     return(list(SEL = res, SAMP = samp))
   }
 }
@@ -345,9 +347,9 @@ ui <- fluidPage(
                  "",
                  sliderInput(inputId = "year.range"
                              , label = "Années d'échantillonnage"
-                             , min = 2020
+                             , min = 2016
                              , max = 2080
-                             , value = c(2020, 2050)
+                             , value = c(2016, 2050)
                              , sep = ""
                  )
           ),
@@ -366,8 +368,8 @@ ui <- fluidPage(
           br()
           , column(3, numericInput(inputId = "spec.year"
                                    , label = "Année"
-                                   , value = 2020
-                                   , min = 2020
+                                   , value = 2016
+                                   , min = 2016
                                    , max = 2080
                                    , step = 1
                                    , width = "100%"))
@@ -513,9 +515,12 @@ ui <- fluidPage(
                  "",
                  numericInput(inputId = "prob.increase.sampXYears"
                               , label = "Augmentation après seuil (%)"
-                              , min = 0.25
-                              , max = 0.25
-                              , value = 0.25
+                              , min = 0.5
+                              , max = 0.5
+                              , value = 0.5
+                              # , min = 0.25
+                              # , max = 0.25
+                              # , value = 0.25
                               , step = 0.1
                  )
           )
@@ -582,7 +587,9 @@ ui <- fluidPage(
           ),
           column(3
                  , ""
-                 , p()
+                 , actionButton(inputId = "load"
+                                , label = "Charger résultats"
+                                , icon = icon("upload"))
           )
         )
       ),
@@ -794,7 +801,7 @@ server <- function(input, output, session) {
     year.start = input$year.range[1]
     year.end = input$year.range[2]
     samp.years = seq(year.start, year.end, 1)
-    year.win = 6
+    year.win = ifelse((year.end - year.start) < 6, year.end - year.start, 6)
     
     prob.increase.sampXYears = 1 + input$prob.increase.sampXYears
     prob.decrease.sampThisYear = 1 - input$prob.decrease.sampThisYear
@@ -810,20 +817,23 @@ server <- function(input, output, session) {
     samp.sites_tab = data.frame(SITE = sites.names
                                 , LAST_YEAR = 0
                                 , NB_YEAR_SUCC = 0
-                                , PROB = 1)
+                                , PROB = 1
+                                , stringsAsFactors = FALSE)
     
     ## Initialize table to store each possible combination of sites
     ## and probability of each combination
     # pool.GLOB = as.data.frame(data.table(COMB = comb.ALL.vec, PROB = 1))
     
+    print("YAAAAAAAAAAAAAAAAAAAAAA")
     if (!input$startFromSave)
     {
       sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
     } else
     {
+      print("YOOOOO")
       if (!is.null(input$dirRes) && nchar(input$dirRes) > 0)
       {
-        sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
+        # sapply(list.files(pattern = "SAUVEGARDE_ANNEE_"), file.remove)
         prev_files = list.files(path = input$dirRes
                                 , pattern = "SAUVEGARDE_ANNEE_"
                                 , full.names = FALSE)
@@ -896,9 +906,11 @@ server <- function(input, output, session) {
     load(paste0("SAUVEGARDE_ANNEE_", year.start, ".RData"))
     # RES = list(SEL = SEL, POOL = SAV$POOL, SAMP = SAV$SAMP)
     RES = list(SEL = SEL, SAMP = SAV$SAMP)
-    
+
     return(RES)
+    # return(TRUE)
   })
+  
   
   ####################################################################
   get_RES_SEL = eventReactive(input$refresh, {
@@ -1036,15 +1048,23 @@ server <- function(input, output, session) {
   
   ####################################################################
   output$dirRes_selector = renderUI({
-    if (input$refresh)
-    {
+    selectInput(inputId = "dirRes"
+                , label = "Sélectionner un dossier"
+                , choices = c("",list.files(pattern = "^ORCHAMP_"))
+                , selected = NULL
+                , multiple = FALSE
+    )
+  })
+  
+  observeEvent(input$refresh, {
+    output$dirRes_selector = renderUI({
       selectInput(inputId = "dirRes"
                   , label = "Sélectionner un dossier"
                   , choices = c("",list.files(pattern = "^ORCHAMP_"))
                   , selected = NULL
                   , multiple = FALSE
       )
-    }
+    })
   })
   
   ####################################################################
