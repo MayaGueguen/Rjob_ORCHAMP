@@ -86,8 +86,8 @@ FUN_SELECT_sites = function(ye
   {
     # cat("\n 1. Sites selection...")
     sites = sample(x = samp$SITE
-                       , size = samp.no_sites
-                       , prob = samp$PROB)
+                   , size = samp.no_sites
+                   , prob = samp$PROB)
     
     ## --------------------------------------------------------------------------
     ## FOR ALL AVAILABLE SITES
@@ -740,7 +740,7 @@ server <- function(input, output, session) {
     
     return(RES)
   })
-
+  
   ####################################################################
   get_CALC = observeEvent(input$refresh, {
     cat("\n >> PREPARATION : initialize parameters...\n")
@@ -803,7 +803,6 @@ server <- function(input, output, session) {
                      setProgress(value = ye.end - year.start + 1, detail = paste("Année", ye.end))
                      
                      RES = FUN_SELECT_sites(ye = year.start
-                                            # , pool = pool.GLOB
                                             , samp = samp.sites_tab
                                             , firstOK = firstOK
                                             , year.start = year.start
@@ -826,7 +825,6 @@ server <- function(input, output, session) {
     if (input$saveResults)
     {
       cat("\n >> SAVING !!\n")
-      
       dirSave = get_dirSave()
       
       ## Save params
@@ -839,17 +837,6 @@ server <- function(input, output, session) {
       sapply(curr_files, function(x) file.copy(from = paste0("./", x)
                                                , to = paste0(dirSave, "/", x)))
     }
-    
-    # ## LOAD the correct RES
-    # SEL = foreach(ye = samp.years, .combine = "rbind") %do%
-    # {
-    #   SAV = get(load(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
-    #   return(SAV$SEL)
-    # }
-    # load(paste0("SAUVEGARDE_ANNEE_", year.start, ".RData"))
-    # RES = list(SEL = SEL, SAMP = SAV$SAMP)
-    # 
-    # return(RES)
   })
   
   
@@ -882,32 +869,37 @@ server <- function(input, output, session) {
   
   
   ####################################################################
-  get_plot2 = eventReactive(input$refresh, {
+  get_plot2 = eventReactive(get_RES(), {
     RES = get_RES()
-    RES$SEL$SITE = as.character(RES$SEL$SITE)
+    RES = RES$SEL
     
-    pp = ggplot(RES$SEL, aes(SITE)) +
-      geom_bar() +
-      geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5)
-                 , lty = 2, lwd = 1, color = "grey") +
-      geom_hline(yintercept = mean(table(RES$SEL$SITE))
-                 , lty = 2, lwd = 1, color = "brown") +
-      labs(title = "Nombre d'années échantillonnées par site\n"
-           , subtitle = paste0("En gris, le nombre minimal d'échantillonnages par site requis.\n"
-                               , "En rouge, le nombre moyen d'échantillonnages par site avec la sélection calculée.\n")) +
-      theme_fivethirtyeight() +
-      theme(axis.text.x = element_text(angle = 45
-                                       , size = 15
-                                       , vjust = 0.4)
-            , axis.text.y = element_text(size = 12))
-    
-    if (input$saveResults)
+    if (!is.null(RES) && nrow(RES) > 0)
     {
-      ggsave(filename = paste0("PLOT1_echantillonnage_", get_params3(), ".pdf")
-             , plot = pp, path = get_dirSave(), width = 8, height = 8)
+      RES$SITE = as.character(RES$SITE)
+      
+      pp = ggplot(RES, aes(SITE)) +
+        geom_bar() +
+        geom_hline(yintercept = floor((input$year.range[2] - input$year.range[1]) / 5)
+                   , lty = 2, lwd = 1, color = "grey") +
+        geom_hline(yintercept = mean(table(RES$SITE))
+                   , lty = 2, lwd = 1, color = "brown") +
+        labs(title = "Nombre d'années échantillonnées par site\n"
+             , subtitle = paste0("En gris, le nombre minimal d'échantillonnages par site requis.\n"
+                                 , "En rouge, le nombre moyen d'échantillonnages par site avec la sélection calculée.\n")) +
+        theme_fivethirtyeight() +
+        theme(axis.text.x = element_text(angle = 45
+                                         , size = 15
+                                         , vjust = 0.4)
+              , axis.text.y = element_text(size = 12))
+      
+      if (input$saveResults)
+      {
+        ggsave(filename = paste0("PLOT1_echantillonnage_", get_params3(), ".pdf")
+               , plot = pp, path = get_dirSave(), width = 8, height = 8)
+      }
+      
+      pp
     }
-    
-    pp
   })
   
   output$plot2 = renderPlot({
@@ -915,7 +907,7 @@ server <- function(input, output, session) {
   })
   
   ####################################################################
-  get_plot4 = eventReactive(input$refresh, {
+  get_plot4 = eventReactive(get_RES(), {
     
     ## Get arguments
     year.start = input$year.range[1]
@@ -924,61 +916,65 @@ server <- function(input, output, session) {
     
     ## Get results
     RES = get_RES()
+    RES = RES$SEL
     
-    TMP = expand.grid(SITE = sites.names, YEAR = samp.years)
-    TMP = merge(TMP, data.frame(RES$SEL, SAMP = 1), by = c("SITE","YEAR"), all.x = T)
-    TMP$SAMP[which(is.na(TMP$SAMP))] = 0
-    
-    TMP.split = split(TMP, TMP$SITE)
-    TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
+    if (!is.null(RES) && nrow(RES) > 0)
     {
-      cumul = cumsum(x$SAMP)
-      cumul_bis = cumul
-      for(i in 2:nrow(x))
+      TMP = expand.grid(SITE = sites.names, YEAR = samp.years)
+      TMP = merge(TMP, data.frame(RES, SAMP = 1), by = c("SITE","YEAR"), all.x = T)
+      TMP$SAMP[which(is.na(TMP$SAMP))] = 0
+      
+      TMP.split = split(TMP, TMP$SITE)
+      TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
       {
-        if(cumul[i] == cumul[i-1]) { cumul_bis[i] = 0 }
-        if(cumul[i] == cumul[i-1] + 1 && cumul_bis[i-1] > 0)
+        cumul = cumsum(x$SAMP)
+        cumul_bis = cumul
+        for(i in 2:nrow(x))
         {
-          cumul_bis[i] = cumul_bis[i-1]
+          if(cumul[i] == cumul[i-1]) { cumul_bis[i] = 0 }
+          if(cumul[i] == cumul[i-1] + 1 && cumul_bis[i-1] > 0)
+          {
+            cumul_bis[i] = cumul_bis[i-1]
+          }
         }
+        cumul_ter = cumul_bis
+        for(i in 1:nrow(x))
+        {
+          if(cumul_bis[i] > 0)
+          {
+            cumul_ter[i] = length(which(cumul_bis == cumul_bis[i]))
+          }
+        }
+        return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
       }
-      cumul_ter = cumul_bis
-      for(i in 1:nrow(x))
+      TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
+      TMP$cumul_ter[which(TMP$cumul_ter == 0)] = ""
+      colos = c('#4477aa','#66ccee','#228833','#ccbb44','#ee6677','#aa3377','#bbbbbb')
+      
+      pp = ggplot(TMP, aes(YEAR, alpha = factor(SAMP), fill = factor(cumul_ter))) +
+        scale_alpha_discrete(guide = F, range = c(0,1)) +
+        scale_fill_manual("Nombre d'années successives d'échantillonnage :"
+                          , values = c("white", colos[1:max(TMP$cumul_ter, na.rm = T)])) +
+        geom_bar(width = 1) +
+        facet_wrap( ~ SITE, ncol = 4) +
+        labs(title = "Fréquence d'échantillonnage par site\n") +
+        theme_fivethirtyeight() +
+        theme(strip.text = element_text(size = 15)
+              , panel.spacing = unit(x = 1, units = "lines")
+              , axis.text.y = element_blank()
+              , axis.text.x = element_text(size = 12)
+              , legend.title = element_text(size = 15)
+              , legend.text = element_text(size = 12)
+              , legend.box.margin = margin(6, 0, 0, 0, "pt"))
+      
+      if (input$saveResults)
       {
-        if(cumul_bis[i] > 0)
-        {
-          cumul_ter[i] = length(which(cumul_bis == cumul_bis[i]))
-        }
+        ggsave(filename = paste0("PLOT2_echantillonnage_", get_params3(), ".pdf")
+               , plot = pp, path = get_dirSave(), width = 8, height = 11)
       }
-      return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
+      
+      pp
     }
-    TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
-    TMP$cumul_ter[which(TMP$cumul_ter == 0)] = ""
-    colos = c('#4477aa','#66ccee','#228833','#ccbb44','#ee6677','#aa3377','#bbbbbb')
-    
-    pp = ggplot(TMP, aes(YEAR, alpha = factor(SAMP), fill = factor(cumul_ter))) +
-      scale_alpha_discrete(guide = F, range = c(0,1)) +
-      scale_fill_manual("Nombre d'années successives d'échantillonnage :"
-                        , values = c("white", colos[1:max(TMP$cumul_ter, na.rm = T)])) +
-      geom_bar(width = 1) +
-      facet_wrap( ~ SITE, ncol = 4) +
-      labs(title = "Fréquence d'échantillonnage par site\n") +
-      theme_fivethirtyeight() +
-      theme(strip.text = element_text(size = 15)
-            , panel.spacing = unit(x = 1, units = "lines")
-            , axis.text.y = element_blank()
-            , axis.text.x = element_text(size = 12)
-            , legend.title = element_text(size = 15)
-            , legend.text = element_text(size = 12)
-            , legend.box.margin = margin(6, 0, 0, 0, "pt"))
-    
-    if (input$saveResults)
-    {
-      ggsave(filename = paste0("PLOT2_echantillonnage_", get_params3(), ".pdf")
-             , plot = pp, path = get_dirSave(), width = 8, height = 11)
-    }
-    
-    pp
   })
   
   output$plot4 = renderPlot({
