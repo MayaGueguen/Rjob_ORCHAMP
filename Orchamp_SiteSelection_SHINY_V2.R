@@ -11,6 +11,7 @@ library(shiny)
 library(shinyFiles)
 library(shinythemes)
 library(shinycssloaders)
+library(shinyalert)
 library(DT)
 library(data.table)
 library(zip)
@@ -71,6 +72,10 @@ FUN_SELECT_sites = function(ye
                             , firstOK = FALSE
                             , year.start, year.end ## fixed inputs !!
                             , samp.no_sites ## fixed inputs !!
+                            , constraint.list ## fixed inputs !!
+                            , constraint.no_sites_max ## fixed inputs !!
+                            , constraint.notTogether ## fixed inputs !!
+                            , constraint.together ## fixed inputs !!
                             , prob.decrease.sampThisYear ## fixed inputs !!
                             , noSuccYears ## fixed inputs !!
                             , prob.decrease.sampSuccYears ## fixed inputs !!
@@ -81,13 +86,65 @@ FUN_SELECT_sites = function(ye
                             , test.win ## fixed inputs !!
 )
 {
-  cat("\n *-*-*-*-*-*-*-* ", ye, " *-*-*-*-*-*-*-* \n")
+  # cat("\n *-*-*-*-*-*-*-* ", ye, " *-*-*-*-*-*-*-* \n")
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
   {
     # cat("\n 1. Sites selection...")
-    sites = sample(x = samp$SITE
-                   , size = samp.no_sites
-                   , prob = samp$PROB)
+    
+    isThereProblem = TRUE
+    while(isThereProblem)
+    {
+      sites = sample(x = samp$SITE
+                     , size = samp.no_sites
+                     , prob = samp$PROB)
+      
+      ## Check combinations for association constraints : together
+      for(con in constraint.together)
+      {
+        con.sep = strsplit(con, "_")[[1]]
+        if (length(which(sites %in% con.sep)) == 1)
+        {
+          sites = c(sites, sub("_", "", sub(sites[which(sites %in% con.sep)], "", con)))
+        } else if (length(which(sites %in% con.sep)) == 2)
+        {
+          sites = c(sites, sample(x = samp$SITE[-which(samp$SITE %in% sites)]
+                                  , size = 1
+                                  , prob = samp$PROB[-which(samp$SITE %in% sites)]))
+        }
+      }
+      
+      # sapply(sites, function(x) grep(x, constraint.together))
+      
+      cond.num = cond.notTogether = cond.together = TRUE
+      
+      ## Check combinations for number constraints
+      for(con in constraint.list)
+      {
+        if (length(which(sites %in% con)) > constraint.no_sites_max)
+        {
+          cond.num = FALSE
+        }
+      }
+      ## Check combinations for association constraints : not together
+      for(con in constraint.notTogether)
+      {
+        con = strsplit(con, "_")[[1]]
+        if (length(which(sites %in% con)) == 2)
+        {
+          cond.notTogether = FALSE
+        }
+      }
+      
+      print(sites)
+      print(c(cond.num, cond.notTogether, cond.together))
+      if (cond.num && cond.notTogether && cond.together)
+      {
+        isThereProblem = FALSE
+      } else
+      {
+        cat(" >> Sampling did not fullfilled conditions, resampling... \n")
+      }
+    }
     
     ## --------------------------------------------------------------------------
     ## FOR ALL AVAILABLE SITES
@@ -152,6 +209,10 @@ FUN_SELECT_sites = function(ye
                                , year.start = year.start
                                , year.end = year.end
                                , samp.no_sites = samp.no_sites
+                               , constraint.list = constraint.list
+                               , constraint.no_sites_max = constraint.no_sites_max
+                               , constraint.notTogether = constraint.notTogether
+                               , constraint.together = constraint.together
                                , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                                , noSuccYears = noSuccYears
                                , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
@@ -171,7 +232,7 @@ FUN_SELECT_sites = function(ye
     ## Frequency ?
     if (ye <= year.end - (test.win - 1))
     {
-      cat("\n ==> TEST FOR FREQUENCY IN YEAR ", ye, " <== \n")
+      # cat("\n ==> TEST FOR FREQUENCY IN YEAR ", ye, " <== \n")
       year.window = seq(ye, ye + (test.win - 1))
       SITE_table = table(res_tmp$SITE[which(res_tmp$YEAR %in% year.window)])
       cond.freq = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= 1)) == nrow(samp))
@@ -180,7 +241,7 @@ FUN_SELECT_sites = function(ye
     ## Total number ?
     if (ye == year.start)
     {
-      cat("\n ==> TEST FOR TOTAL NUMBER IN YEAR ", ye, " <== \n")
+      # cat("\n ==> TEST FOR TOTAL NUMBER IN YEAR ", ye, " <== \n")
       SITE_table = table(res_tmp$SITE)
       cond.num = (length(SITE_table) == nrow(samp) && length(which(SITE_table >= test.ref)) == nrow(samp))
     }
@@ -220,8 +281,8 @@ FUN_SELECT_sites = function(ye
         save(SAV, file = paste0("SAUVEGARDE_ANNEE_", year.end - 1, ".RData"), envir = environment())
       }
       
-      cat("\n /!\\ Certaines conditions ne sont pas remplies (frequency : ", cond.freq
-          , ", total number : ", cond.num, ") : redémarrage du calcul /!\\ \n")
+      # cat("\n /!\\ Certaines conditions ne sont pas remplies (frequency : ", cond.freq
+      #     , ", total number : ", cond.num, ") : redémarrage du calcul /!\\ \n")
       samp$PROB = 1
       samp$LAST_YEAR = 0
       samp$NB_YEAR_SUCC = 0
@@ -231,6 +292,10 @@ FUN_SELECT_sites = function(ye
                               , year.start = year.start
                               , year.end = year.end
                               , samp.no_sites = samp.no_sites
+                              , constraint.list = constraint.list
+                              , constraint.no_sites_max = constraint.no_sites_max
+                              , constraint.notTogether = constraint.notTogether
+                              , constraint.together = constraint.together
                               , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                               , noSuccYears = noSuccYears
                               , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
@@ -299,20 +364,23 @@ ui <- fluidPage(
         ),
         fluidRow(
           br()
-          , column(3, numericInput(inputId = "spec.year"
+          , column(6, numericInput(inputId = "spec.year"
                                    , label = "Année"
                                    , value = 2016
                                    , min = 2016
                                    , max = 2080
                                    , step = 1
                                    , width = "100%"))
-          , column(3, numericInput(inputId = "spec.no_sites"
+          , column(6, numericInput(inputId = "spec.no_sites"
                                    , label = "Nb sites"
                                    , min = 0
                                    , max = 7
                                    , value = NULL
                                    , width = "100%"))
-          , column(6, selectInput(inputId = "spec.sites"
+        ),
+        fluidRow(
+          br()
+          , column(12, selectInput(inputId = "spec.sites"
                                   , label = "Sites"
                                   , choices = sites.names
                                   , selected = sites.names
@@ -320,6 +388,7 @@ ui <- fluidPage(
                                   , width = "100%"))
         ),
         fluidRow(
+          br(),
           column(8,
                  "",
                  actionButton(inputId = "add.year.constraint"
@@ -462,9 +531,9 @@ ui <- fluidPage(
         p(em("(iv) si le site ne valide pas les conditions à long-terme.")),
         numericInput(inputId = "prob.decrease.notWorking"
                      , label = "Diminution après échantillonnage (%)"
-                     , min = 0.2
-                     , max = 0.2
-                     , value = 0.2
+                     , min = 0.1
+                     , max = 0.1
+                     , value = 0.1
                      , step = 0.1
         )
       )
@@ -613,10 +682,10 @@ server <- function(input, output, session) {
                                      , input$constraint.no_sites_max))
     for(grp in unique(INIT$Grp_Bota))
     {
-      if (length(get(paste0("input$constraint.", grp))) > 0)
+      if (length(input[[paste0("constraint.", grp)]]) > 0)
       {
         PARAMS = rbind(PARAMS, data.frame(PARAMETRE = paste0("CONTRAINTE_", grp)
-                                          , VALEUR = get(paste0("input$constraint.", grp))))
+                                          , VALEUR = input[[paste0("constraint.", grp)]]))
       }
     }
     if (length(input$constraint.notTogether) > 0)
@@ -720,7 +789,6 @@ server <- function(input, output, session) {
   ####################################################################
   get_RES = eventReactive(tagList(input$load, input$refresh), {
     
-    cat(" oyoo")
     year.start = input$year.range[1]
     year.end = input$year.range[2]
     samp.years = seq(year.start, year.end, 1)
@@ -758,6 +826,9 @@ server <- function(input, output, session) {
     prob.decrease.sampSuccYears = 1 - input$prob.decrease.sampSuccYears
     prob.decrease.notWorking = 1 - input$prob.decrease.notWorking
     
+    eval(parse(text = paste0('constraint.list = list('
+                             , paste0("input$constraint.", unique(INIT$Grp_Bota), collapse = ",")
+                             , ')')))
     
     ## --------------------------------------------------------------------------
     ## Initialize table to store for each site :
@@ -793,6 +864,7 @@ server <- function(input, output, session) {
                    RES = foreach(ye.end = seq(year.start + (year.win - 1), year.end, 1)) %do%
                    {
                      cat("\n ############ ", ye.end, " ############ \n")
+                     
                      if (input$startFromSave)
                      {
                        firstOK = TRUE
@@ -802,21 +874,48 @@ server <- function(input, output, session) {
                      }
                      setProgress(value = ye.end - year.start + 1, detail = paste("Année", ye.end))
                      
-                     RES = FUN_SELECT_sites(ye = year.start
-                                            , samp = samp.sites_tab
-                                            , firstOK = firstOK
-                                            , year.start = year.start
-                                            , year.end = ye.end
-                                            , samp.no_sites = input$samp.no_sites
-                                            , prob.decrease.sampThisYear = prob.decrease.sampThisYear
-                                            , noSuccYears = input$noSuccYears
-                                            , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
-                                            , noXYears = input$noXYears
-                                            , prob.increase.sampXYears = prob.increase.sampXYears
-                                            , prob.decrease.notWorking = prob.decrease.notWorking
-                                            , test.ref = floor((ye.end - year.start) / year.win)
-                                            , test.win = year.win
-                     )
+                     isThereProblem = TRUE
+                     # numTrials = 0
+                     while(isThereProblem)
+                     {
+                       RES = tryCatch(FUN_SELECT_sites(ye = year.start
+                                                       , samp = samp.sites_tab
+                                                       , firstOK = firstOK
+                                                       , year.start = year.start
+                                                       , year.end = ye.end
+                                                       , samp.no_sites = input$samp.no_sites
+                                                       , constraint.list = constraint.list
+                                                       , constraint.no_sites_max = input$constraint.no_sites_max
+                                                       , constraint.notTogether = input$constraint.notTogether
+                                                       , constraint.together = input$constraint.together
+                                                       , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+                                                       , noSuccYears = input$noSuccYears
+                                                       , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+                                                       , noXYears = input$noXYears
+                                                       , prob.increase.sampXYears = prob.increase.sampXYears
+                                                       , prob.decrease.notWorking = prob.decrease.notWorking
+                                                       , test.ref = floor((ye.end - year.start) / year.win)
+                                                       , test.win = year.win
+                       ), error = function(e) e)
+                       if (length(grep("pile de noeuds débordée vers le haut", RES$message)) == 0)
+                       {
+                         isThereProblem = FALSE
+                       } else
+                       {
+                         # if (numTrials > 10)
+                         # {
+                         #   print("youhouuuu")
+                         #   shinyalert(type = "error"
+                         #              , text = "Problème de convergence ! Merci de relancer le calcul en sélectionnant
+                         #              le démarrage à partir des résultats précédents.")
+                         #   stop("Convergence failed.")
+                         # } else
+                         # {
+                           cat(" >> Convergence failed, restarting this year... \n")
+                           # numTrials = numTrials + 1 
+                         # }
+                       }
+                     }
                      return(RES)
                    }
                  })
