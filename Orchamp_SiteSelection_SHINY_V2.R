@@ -48,18 +48,6 @@ if (length(na.exclude(unique(INIT$Incomp))) > 0)
                   , paste0(c(site2, site1), collapse = "_")))
   }
 }
-## GET CONSTRAINT : together
-constraint.together = vector()
-if (length(na.exclude(unique(INIT$Paires))) > 0)
-{
-  constraint.together = foreach(paire = na.exclude(unique(INIT$Paires)), .combine = "c") %do%
-  {
-    site1 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][1])]
-    site2 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][2])]
-    return(ifelse(paste0(c(site1, site2), collapse = "_") %in% comb.sites.2
-                  , paste0(c(site1, site2), collapse = "_")
-                  , paste0(c(site2, site1), collapse = "_")))  }
-}
 
 
 ###################################################################################################################################
@@ -75,7 +63,6 @@ FUN_SELECT_sites = function(ye
                             , constraint.list ## fixed inputs !!
                             , constraint.no_sites_max ## fixed inputs !!
                             , constraint.notTogether ## fixed inputs !!
-                            , constraint.together ## fixed inputs !!
                             , prob.decrease.sampThisYear ## fixed inputs !!
                             , noSuccYears ## fixed inputs !!
                             , prob.decrease.sampSuccYears ## fixed inputs !!
@@ -98,24 +85,7 @@ FUN_SELECT_sites = function(ye
                      , size = samp.no_sites
                      , prob = samp$PROB)
       
-      ## Check combinations for association constraints : together
-      for(con in constraint.together)
-      {
-        con.sep = strsplit(con, "_")[[1]]
-        if (length(which(sites %in% con.sep)) == 1)
-        {
-          sites = c(sites, sub("_", "", sub(sites[which(sites %in% con.sep)], "", con)))
-        } else if (length(which(sites %in% con.sep)) == 2)
-        {
-          sites = c(sites, sample(x = samp$SITE[-which(samp$SITE %in% sites)]
-                                  , size = 1
-                                  , prob = samp$PROB[-which(samp$SITE %in% sites)]))
-        }
-      }
-      
-      # sapply(sites, function(x) grep(x, constraint.together))
-      
-      cond.num = cond.notTogether = cond.together = TRUE
+      cond.num = cond.notTogether = TRUE
       
       ## Check combinations for number constraints
       for(con in constraint.list)
@@ -135,9 +105,7 @@ FUN_SELECT_sites = function(ye
         }
       }
       
-      print(sites)
-      print(c(cond.num, cond.notTogether, cond.together))
-      if (cond.num && cond.notTogether && cond.together)
+      if (cond.num && cond.notTogether)
       {
         isThereProblem = FALSE
       } else
@@ -212,7 +180,6 @@ FUN_SELECT_sites = function(ye
                                , constraint.list = constraint.list
                                , constraint.no_sites_max = constraint.no_sites_max
                                , constraint.notTogether = constraint.notTogether
-                               , constraint.together = constraint.together
                                , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                                , noSuccYears = noSuccYears
                                , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
@@ -295,7 +262,6 @@ FUN_SELECT_sites = function(ye
                               , constraint.list = constraint.list
                               , constraint.no_sites_max = constraint.no_sites_max
                               , constraint.notTogether = constraint.notTogether
-                              , constraint.together = constraint.together
                               , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                               , noSuccYears = noSuccYears
                               , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
@@ -415,9 +381,9 @@ ui <- fluidPage(
         
         numericInput(inputId = "constraint.no_sites_max"
                      , label = "Nombre de sites MAX / partenaire / an"
-                     , min = 2
-                     , max = 5
-                     , value = 3
+                     , min = 1
+                     , max = 3
+                     , value = 2
                      , step = 1
         ),
         
@@ -443,20 +409,12 @@ ui <- fluidPage(
         
         h3("B. Contraintes d'association"),
         p(em("Certains sites sont similaires en termes de conditions environnementales.
-             Des sites similaires ne peuvent être échantillonnés la même année.
-             Au contraire, par souci de practicité d'échantillonnage, certains sites doivent toujours etre échantillonnés ensemble.")),
+             Des sites similaires ne peuvent être échantillonnés la même année.")),
         
         selectInput(inputId = "constraint.notTogether"
                     , label = "Sites à ne pas échantillonner la même année"
                     , choices = comb.sites.2
                     , selected = constraint.notTogether
-                    , multiple = TRUE
-                    , width = "100%"
-        ),
-        selectInput(inputId = "constraint.together"
-                    , label = "Sites à échantillonner la même année"
-                    , choices = comb.sites.2
-                    , selected = constraint.together
                     , multiple = TRUE
                     , width = "100%"
         )
@@ -692,10 +650,6 @@ server <- function(input, output, session) {
     {
       PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_PAS_ENSEMBLE", VALEUR = input$constraint.notTogether))
     }
-    if (length(input$constraint.together) > 0)
-    {
-      PARAMS = rbind(PARAMS, data.frame(PARAMETRE = "CONTRAINTE_ENSEMBLE", VALEUR = input$constraint.together))
-    }
     PARAMS = rbind(PARAMS, data.frame(PARAMETRE = c("SEUIL_ANNEES_PAS_ECHANTILLONNAGE"
                                                     , "PROB_AUGMENTATION_PAS_ECHANTILLONNAGE"
                                                     , "PROB_DIMINUTION_ECHANTILLONNAGE_CETTE_ANNEE"
@@ -887,7 +841,6 @@ server <- function(input, output, session) {
                                                        , constraint.list = constraint.list
                                                        , constraint.no_sites_max = input$constraint.no_sites_max
                                                        , constraint.notTogether = input$constraint.notTogether
-                                                       , constraint.together = input$constraint.together
                                                        , prob.decrease.sampThisYear = prob.decrease.sampThisYear
                                                        , noSuccYears = input$noSuccYears
                                                        , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
