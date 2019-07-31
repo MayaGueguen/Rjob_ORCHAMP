@@ -81,9 +81,18 @@ FUN_SELECT_sites = function(ye
     isThereProblem = TRUE
     while(isThereProblem)
     {
+      num_sites = samp.no_sites
+      probas = samp$PROB
+      if (ye %in% DT.add.year.constraint$YEAR)
+      {
+        ind_ye = which(DT.add.year.constraint$YEAR == ye)
+        ind_si = which(samp$SITE %in% DT.add.year.constraint$SITES[ind_ye])
+        num_sites = unique(DT.add.year.constraint$NB_SITES[ind_ye])
+        probas[-ind_si] = 0
+      }
       sites = sample(x = samp$SITE
-                     , size = samp.no_sites
-                     , prob = samp$PROB)
+                     , size = num_sites
+                     , prob = probas)
       
       cond.num = cond.notTogether = TRUE
       
@@ -366,6 +375,7 @@ ui <- fluidPage(
         fluidRow(
           column(12,
                  "",
+                 br(),
                  tableOutput(outputId = "DT.add.year.constraint"))
         )
       ),
@@ -615,14 +625,23 @@ server <- function(input, output, session) {
   
   ####################################################################
   
-  observeEvent(input$add.year.constraint, {
-    output$DT.add.year.constraint = renderTable({
+  get_DT.add.year.constraint = eventReactive(input$add.year.constraint, {
+    if (!is.na(input$spec.year) && nchar(input$spec.year) &&
+        !is.na(input$spec.no_sites) && nchar(input$spec.no_sites))
+    {
       DT.add.year.constraint <<- rbind(DT.add.year.constraint
                                        , data.frame(YEAR = input$spec.year
                                                     , NB_SITES = input$spec.no_sites
                                                     , SITES = input$spec.sites))
-      return(DT.add.year.constraint[, 1:2])
-    })
+    }
+  })
+  
+  output$DT.add.year.constraint = renderTable({
+    TAB = get_DT.add.year.constraint()
+    if (!is.null(TAB) && nrow(TAB) > 0)
+    {
+      return(unique(TAB[, 1:2]))
+    }
   })
   
   ####################################################################
