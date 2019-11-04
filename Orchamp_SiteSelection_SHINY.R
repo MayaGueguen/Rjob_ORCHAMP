@@ -40,13 +40,13 @@ constraint.notTogether = vector()
 if (length(na.exclude(unique(INIT$Incomp))) > 0)
 {
   constraint.notTogether = foreach(paire = na.exclude(unique(INIT$Incomp)), .combine = "c") %do%
-  {
-    site1 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][1])]
-    site2 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][2])]
-    return(ifelse(paste0(c(site1, site2), collapse = "_") %in% comb.sites.2
-                  , paste0(c(site1, site2), collapse = "_")
-                  , paste0(c(site2, site1), collapse = "_")))
-  }
+    {
+      site1 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][1])]
+      site2 = INIT$Gradient[which(INIT$Code_grad == strsplit(paire, "_")[[1]][2])]
+      return(ifelse(paste0(c(site1, site2), collapse = "_") %in% comb.sites.2
+                    , paste0(c(site1, site2), collapse = "_")
+                    , paste0(c(site2, site1), collapse = "_")))
+    }
 }
 
 
@@ -297,7 +297,7 @@ ui <- fluidPage(
     tags$style(HTML("
                     @import url('https://fonts.googleapis.com/css?family=Londrina+Solid:200,300|Medula+One|Slabo+27px|Francois+One');
                     "))
-    ),
+  ),
   
   fluidRow(
     style = HTML(paste0("color: #FFFFFF; background-color: #3a7da8; margin-top: 20px; margin-bottom: 20px; font-family: 'Londrina Solid', cursive;")),
@@ -356,11 +356,11 @@ ui <- fluidPage(
         fluidRow(
           br()
           , column(12, selectInput(inputId = "spec.sites"
-                                  , label = "Sites"
-                                  , choices = sites.names
-                                  , selected = sites.names
-                                  , multiple = TRUE
-                                  , width = "100%"))
+                                   , label = "Sites"
+                                   , choices = sites.names
+                                   , selected = sites.names
+                                   , multiple = TRUE
+                                   , width = "100%"))
         ),
         fluidRow(
           br(),
@@ -410,7 +410,7 @@ ui <- fluidPage(
             )
           })
         )
-        ),
+      ),
       
       
       ## ----------------------------------------------------------
@@ -428,7 +428,7 @@ ui <- fluidPage(
                     , multiple = TRUE
                     , width = "100%"
         )
-        ),
+      ),
       
       ## ----------------------------------------------------------
       wellPanel(
@@ -505,7 +505,7 @@ ui <- fluidPage(
                      , step = 0.1
         )
       )
-        ),
+    ),
     
     # Output
     mainPanel(
@@ -610,11 +610,32 @@ ui <- fluidPage(
                  , br()
                  , br()
                  , withSpinner(plotOutput(outputId = "plot4", width = "100%", height = "1000px"), type = 1)
+        ),
+        tabPanel(title = "Statistiques"
+                 , value = "statistics"
+                 , fluidRow(
+                   column(5
+                          , br()
+                          , verbatimTextOutput(outputId = "RES_mean1"))
+                   , column(7
+                            , br()
+                            , verbatimTextOutput(outputId = "RES_mean2"))
+                 )
+                 , fluidRow(
+                   column(5
+                          , br()
+                          , br()
+                          , dataTableOutput(outputId = "RES_STAT1"))
+                   , column(7
+                            , br()
+                            , br()
+                            , dataTableOutput(outputId = "RES_STAT2"))
+                 )
         )
       )
     )
-    )
   )
+)
 
 ###################################################################################################################################
 
@@ -768,14 +789,14 @@ server <- function(input, output, session) {
     
     ## LOAD the correct RES
     SEL = foreach(ye = samp.years, .combine = "rbind") %do%
-    {
-      file_name = paste0("./", input$dirRes, "/SAUVEGARDE_ANNEE_", ye, ".RData")
-      if (file.exists(file_name))
       {
-        SAV = get(load(file_name))
-        return(SAV$SEL)
+        file_name = paste0("./", input$dirRes, "/SAUVEGARDE_ANNEE_", ye, ".RData")
+        if (file.exists(file_name))
+        {
+          SAV = get(load(file_name))
+          return(SAV$SEL)
+        }
       }
-    }
     # load(paste0("./", input$dirRes, "/SAUVEGARDE_ANNEE_", year.start, ".RData"))
     RES = list(SEL = SEL, SAMP = 1) #SAV$SAMP)
     
@@ -835,61 +856,61 @@ server <- function(input, output, session) {
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                  , min = 0, max = year.end - year.start + 1, {
                    RES = foreach(ye.end = seq(year.start + (year.win - 1), year.end, 1)) %do%
-                   {
-                     cat("\n ############ ", ye.end, " ############ \n")
-                     
-                     if (input$startFromSave)
                      {
-                       firstOK = TRUE
-                     } else
-                     {
-                       firstOK = ifelse(ye.end == year.start + (year.win - 1), FALSE, TRUE)
-                     }
-                     setProgress(value = ye.end - year.start + 1, detail = paste("Année", ye.end))
-                     
-                     isThereProblem = TRUE
-                     # numTrials = 0
-                     while(isThereProblem)
-                     {
-                       RES = tryCatch(FUN_SELECT_sites(ye = year.start
-                                                       , samp = samp.sites_tab
-                                                       , firstOK = firstOK
-                                                       , year.start = year.start
-                                                       , year.end = ye.end
-                                                       , samp.no_sites = input$samp.no_sites
-                                                       , constraint.list = constraint.list
-                                                       , constraint.no_sites_max = input$constraint.no_sites_max
-                                                       , constraint.notTogether = input$constraint.notTogether
-                                                       , prob.decrease.sampThisYear = prob.decrease.sampThisYear
-                                                       , noSuccYears = input$noSuccYears
-                                                       , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
-                                                       , noXYears = input$noXYears
-                                                       , prob.increase.sampXYears = prob.increase.sampXYears
-                                                       , prob.decrease.notWorking = prob.decrease.notWorking
-                                                       , test.ref = floor((ye.end - year.start) / year.win)
-                                                       , test.win = year.win
-                       ), error = function(e) e)
-                       if (length(grep("pile de noeuds débordée vers le haut", RES$message)) == 0)
+                       cat("\n ############ ", ye.end, " ############ \n")
+                       
+                       if (input$startFromSave)
                        {
-                         isThereProblem = FALSE
+                         firstOK = TRUE
                        } else
                        {
-                         # if (numTrials > 10)
-                         # {
-                         #   print("youhouuuu")
-                         #   shinyalert(type = "error"
-                         #              , text = "Problème de convergence ! Merci de relancer le calcul en sélectionnant
-                         #              le démarrage à partir des résultats précédents.")
-                         #   stop("Convergence failed.")
-                         # } else
-                         # {
+                         firstOK = ifelse(ye.end == year.start + (year.win - 1), FALSE, TRUE)
+                       }
+                       setProgress(value = ye.end - year.start + 1, detail = paste("Année", ye.end))
+                       
+                       isThereProblem = TRUE
+                       # numTrials = 0
+                       while(isThereProblem)
+                       {
+                         RES = tryCatch(FUN_SELECT_sites(ye = year.start
+                                                         , samp = samp.sites_tab
+                                                         , firstOK = firstOK
+                                                         , year.start = year.start
+                                                         , year.end = ye.end
+                                                         , samp.no_sites = input$samp.no_sites
+                                                         , constraint.list = constraint.list
+                                                         , constraint.no_sites_max = input$constraint.no_sites_max
+                                                         , constraint.notTogether = input$constraint.notTogether
+                                                         , prob.decrease.sampThisYear = prob.decrease.sampThisYear
+                                                         , noSuccYears = input$noSuccYears
+                                                         , prob.decrease.sampSuccYears = prob.decrease.sampSuccYears
+                                                         , noXYears = input$noXYears
+                                                         , prob.increase.sampXYears = prob.increase.sampXYears
+                                                         , prob.decrease.notWorking = prob.decrease.notWorking
+                                                         , test.ref = floor((ye.end - year.start) / year.win)
+                                                         , test.win = year.win
+                         ), error = function(e) e)
+                         if (length(grep("pile de noeuds débordée vers le haut", RES$message)) == 0)
+                         {
+                           isThereProblem = FALSE
+                         } else
+                         {
+                           # if (numTrials > 10)
+                           # {
+                           #   print("youhouuuu")
+                           #   shinyalert(type = "error"
+                           #              , text = "Problème de convergence ! Merci de relancer le calcul en sélectionnant
+                           #              le démarrage à partir des résultats précédents.")
+                           #   stop("Convergence failed.")
+                           # } else
+                           # {
                            cat(" >> Convergence failed, restarting this year... \n")
                            # numTrials = numTrials + 1 
-                         # }
+                           # }
+                         }
                        }
+                       return(RES)
                      }
-                     return(RES)
-                   }
                  })
     
     ## COPY outputs
@@ -920,12 +941,12 @@ server <- function(input, output, session) {
     {
       RES.split = split(RES, RES$YEAR)
       RES = foreach(x = RES.split, .combine = "rbind") %do%
-      {
-        eval(parse(text = paste0("res = data.frame(",paste0("SITE", 1:input$samp.no_sites
-                                                            ," = x$SITE[", 1:input$samp.no_sites, "]", collapse = ",")
-                                 ,")")))
-        return(res)
-      }
+        {
+          eval(parse(text = paste0("res = data.frame(",paste0("SITE", 1:input$samp.no_sites
+                                                              ," = x$SITE[", 1:input$samp.no_sites, "]", collapse = ",")
+                                   ,")")))
+          return(res)
+        }
       RES = cbind(data.frame(ANNEE = names(RES.split)), RES)
       
       if (input$saveResults)
@@ -935,6 +956,31 @@ server <- function(input, output, session) {
       }
       
       output$RES_SEL = renderDataTable({ as.data.table(RES) })
+      
+      RES_melt = reshape2::melt(RES, id.vars = "ANNEE")
+      colnames(RES_melt) = c("ANNEE", "SITE_NUMERO", "SITE_NOM")
+      RES_melt = RES_melt[order(RES_melt$ANNEE), ]
+      RES_melt = na.exclude(RES_melt)
+      
+      RES_stat1 = as.data.frame(table(RES_melt$ANNEE))
+      colnames(RES_stat1) = c("ANNEE", "NOMBRE DE SITES")
+      RES_stat2 = as.data.frame(table(RES_melt$SITE_NOM))
+      colnames(RES_stat2) = c("SITE", "NOMBRE d'ANNEES")
+      RES_stat2$FREQUENCE = round((max(as.numeric(RES_melt$ANNEE)) - min(as.numeric(RES_melt$ANNEE)))/ RES_stat2[, 2], 1)
+      
+      output$RES_mean1 = renderText({ print(paste0("Nombre moyen de sites par année : ", round(mean(RES_stat1[, 2]), 1))) })
+      output$RES_mean2 = renderText({
+        textMessage = paste0("Nombre moyen d'années par site : "
+                             , round(mean(RES_stat2[, 2]), 1)
+                             , "\n"
+                             , "Fréquence moyenne d'échantillonnage par site : "
+                             , round(mean(RES_stat2[, 3]), 1))
+        print(textMessage)
+      })
+      
+      output$RES_STAT1 = renderDataTable({ as.data.table(RES_stat1) })
+      output$RES_STAT2 = renderDataTable({ as.data.table(RES_stat2) })
+
     }
   })
   
@@ -997,27 +1043,27 @@ server <- function(input, output, session) {
       
       TMP.split = split(TMP, TMP$SITE)
       TMP.split = foreach(x = TMP.split, .combine = "rbind") %do%
-      {
-        cumul = cumsum(x$SAMP)
-        cumul_bis = cumul
-        for(i in 2:nrow(x))
         {
-          if(cumul[i] == cumul[i-1]) { cumul_bis[i] = 0 }
-          if(cumul[i] == cumul[i-1] + 1 && cumul_bis[i-1] > 0)
+          cumul = cumsum(x$SAMP)
+          cumul_bis = cumul
+          for(i in 2:nrow(x))
           {
-            cumul_bis[i] = cumul_bis[i-1]
+            if(cumul[i] == cumul[i-1]) { cumul_bis[i] = 0 }
+            if(cumul[i] == cumul[i-1] + 1 && cumul_bis[i-1] > 0)
+            {
+              cumul_bis[i] = cumul_bis[i-1]
+            }
           }
-        }
-        cumul_ter = cumul_bis
-        for(i in 1:nrow(x))
-        {
-          if(cumul_bis[i] > 0)
+          cumul_ter = cumul_bis
+          for(i in 1:nrow(x))
           {
-            cumul_ter[i] = length(which(cumul_bis == cumul_bis[i]))
+            if(cumul_bis[i] > 0)
+            {
+              cumul_ter[i] = length(which(cumul_bis == cumul_bis[i]))
+            }
           }
+          return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
         }
-        return(data.frame(x[, c("SITE", "YEAR")], cumul, cumul_bis, cumul_ter))
-      }
       TMP = merge(TMP, TMP.split, by = c("SITE", "YEAR"))
       TMP$cumul_ter[which(TMP$cumul_ter == 0)] = ""
       colos = c('#4477aa','#66ccee','#228833','#ccbb44','#ee6677','#aa3377','#bbbbbb')
