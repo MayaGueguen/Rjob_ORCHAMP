@@ -25,6 +25,8 @@ INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1,
 INIT.years = sort(unique(INIT$Yr_lancement))
 
 sites.names = INIT$Gradient
+sites.plots = INIT$Nb_plots
+names(sites.plots) = sites.names
 
 ## GET CONSTRAINT : gestionnaires
 for(grp in unique(INIT$Grp_Bota))
@@ -295,8 +297,8 @@ ui <- fluidPage(
   
   tags$body(
     tags$style(HTML("
-                    @import url('https://fonts.googleapis.com/css?family=Londrina+Solid:200,300|Medula+One|Slabo+27px|Francois+One');
-                    "))
+                      @import url('https://fonts.googleapis.com/css?family=Londrina+Solid:200,300|Medula+One|Slabo+27px|Francois+One');
+                      "))
   ),
   
   fluidRow(
@@ -331,7 +333,7 @@ ui <- fluidPage(
                  numericInput(inputId = "samp.no_sites"
                               , label = "Nombre de sites / an"
                               , min = 5
-                              , max = 7
+                              , max = 8
                               , value = 6
                               , step = 1
                  )
@@ -386,8 +388,8 @@ ui <- fluidPage(
         
         h3("A. Contraintes d'échantillonnage"),
         p(em("Les sites sont attribués aux différents partenaires impliqués.
-             Un nombre limite de sites à échantillonner par an et par partenaire
-             est fixé au préalable.")),
+               Un nombre limite de sites à échantillonner par an et par partenaire
+               est fixé au préalable.")),
         
         numericInput(inputId = "constraint.no_sites_max"
                      , label = "Nombre de sites MAX / partenaire / an"
@@ -419,7 +421,7 @@ ui <- fluidPage(
         
         h3("B. Contraintes d'association"),
         p(em("Certains sites sont similaires en termes de conditions environnementales.
-             Des sites similaires ne peuvent être échantillonnés la même année.")),
+               Des sites similaires ne peuvent être échantillonnés la même année.")),
         
         selectInput(inputId = "constraint.notTogether"
                     , label = "Sites à ne pas échantillonner la même année"
@@ -961,14 +963,27 @@ server <- function(input, output, session) {
       colnames(RES_melt) = c("ANNEE", "SITE_NUMERO", "SITE_NOM")
       RES_melt = RES_melt[order(RES_melt$ANNEE), ]
       RES_melt = na.exclude(RES_melt)
+      RES_melt$SITE_PLOTS = sites.plots[RES_melt$SITE_NOM]
       
       RES_stat1 = as.data.frame(table(RES_melt$ANNEE))
       colnames(RES_stat1) = c("ANNEE", "NOMBRE DE SITES")
+      TT = tapply(X = RES_melt$SITE_PLOTS, INDEX = list(RES_melt$ANNEE), FUN = sum)
+      TT = data.frame(ANNEE = names(TT), TT)
+      colnames(TT) = c("ANNEE", "NOMBRE DE PLOTS")
+      RES_stat1 = merge(RES_stat1, TT, by = "ANNEE", all.x = TRUE)
+      
       RES_stat2 = as.data.frame(table(RES_melt$SITE_NOM))
       colnames(RES_stat2) = c("SITE", "NOMBRE d'ANNEES")
       RES_stat2$FREQUENCE = round((max(as.numeric(RES_melt$ANNEE)) - min(as.numeric(RES_melt$ANNEE)))/ RES_stat2[, 2], 1)
       
-      output$RES_mean1 = renderText({ print(paste0("Nombre moyen de sites par année : ", round(mean(RES_stat1[, 2]), 1))) })
+      output$RES_mean1 = renderText({
+        textMessage = paste0("Nombre moyen de sites par année : "
+                             , round(mean(RES_stat1[, 2]), 1)
+                             , "\n"
+                             , "Nombre moyen de plots par année : "
+                             , round(mean(RES_stat1[, 3]), 1))
+        print(textMessage)
+      })
       output$RES_mean2 = renderText({
         textMessage = paste0("Nombre moyen d'années par site : "
                              , round(mean(RES_stat2[, 2]), 1)
@@ -980,7 +995,7 @@ server <- function(input, output, session) {
       
       output$RES_STAT1 = renderDataTable({ as.data.table(RES_stat1) })
       output$RES_STAT2 = renderDataTable({ as.data.table(RES_stat2) })
-
+      
     }
   })
   
