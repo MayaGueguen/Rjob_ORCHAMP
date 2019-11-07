@@ -96,7 +96,7 @@ FUN_SELECT_sites = function(ye
                      , size = num_sites
                      , prob = probas)
       
-      cond.num = cond.notTogether = TRUE
+      cond.num = cond.notTogether = cond.plots = TRUE
       
       ## Check combinations for number constraints
       for(con in constraint.list)
@@ -115,12 +115,18 @@ FUN_SELECT_sites = function(ye
           cond.notTogether = FALSE
         }
       }
+      ## Check combinations for number of plots constraint
+      if (sum(sites.plots[sites]) > 37)
+      {
+        cond.plots = FALSE
+      }
       
-      if (cond.num && cond.notTogether)
+      if (cond.num && cond.notTogether && cond.plots)
       {
         isThereProblem = FALSE
       } else
       {
+        # cat(" ", cond.num, " ", cond.notTogether, " ", cond.plots, "\n")
         cat(" >> Sampling did not fullfilled conditions, resampling... \n")
       }
     }
@@ -855,6 +861,26 @@ server <- function(input, output, session) {
     ## --------------------------------------------------------------------------
     cat("\n >> STARTING !!\n")
     
+    showModal(modalDialog(HTML(paste0("Paramètres sélectionnés :
+                                        <ul>
+                                        <br/>
+                                    <li><strong>période :</strong> ", year.start, " - ", year.end,"</li>
+                                    <li><strong>nb de sites / an :</strong> ", input$samp.no_sites, "</li>
+                                    <br/>
+                                    <li><strong>(i) diminution proba après échantillonnage :</strong> ", input$prob.decrease.sampThisYear, "</li>
+                                    <br/>
+                                    <li><strong>(ii) seuil années successives :</strong> ", input$noSuccYears, "</li>
+                                    <li><strong>(ii) diminution proba après seuil :</strong> ", input$prob.decrease.sampSuccYears, "</li>
+                                    <br/>
+                                    <li><strong>(iii) seuil années non-échantillonnées :</strong> ", input$noXYears, "</li>
+                                    <li><strong>(iii) augmentation proba après seuil :</strong> ", input$prob.increase.sampXYears, "</li>
+                                    <br/>
+                                    <li><strong>(iv) diminution proba conditions long terme :</strong> ", input$prob.decrease.notWorking, "</li>
+                                    </ul>"))
+                          , title = HTML("Calcul d'un scénario d'échantillonnage")
+                          , footer = NULL))
+    Sys.sleep(3)
+    
     withProgress(message = "CALCUL DE L'ECHANTILLONNAGE EN COURS"
                  , min = 0, max = year.end - year.start + 1, {
                    RES = foreach(ye.end = seq(year.start + (year.win - 1), year.end, 1)) %do%
@@ -914,6 +940,8 @@ server <- function(input, output, session) {
                        return(RES)
                      }
                  })
+    
+    removeModal()
     
     ## COPY outputs
     if (input$saveResults)
