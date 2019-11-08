@@ -19,7 +19,8 @@ library(xlsx)
 
 ###################################################################################################################################
 
-DT.add.year.constraint <- data.frame()
+DT.add.year.constraint1 <- data.frame()
+DT.add.year.constraint2 <- data.frame()
 
 INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F)
 INIT.years = sort(unique(INIT$Yr_lancement))
@@ -35,9 +36,9 @@ for(grp in unique(INIT$Grp_Bota))
          , value = INIT$Gradient[which(INIT$Grp_Bota == grp)])
 }
 
+## GET CONSTRAINT : not together
 comb.sites.2 = t(combn(sites.names, 2))
 comb.sites.2 = paste0(comb.sites.2[,1], "_", comb.sites.2[,2])
-## GET CONSTRAINT : not together
 constraint.notTogether = vector()
 if (length(na.exclude(unique(INIT$Incomp))) > 0)
 {
@@ -51,6 +52,9 @@ if (length(na.exclude(unique(INIT$Incomp))) > 0)
     }
 }
 
+## GET CONSTRAINT : specific year
+# constraint.specificYear = vector()
+
 
 ###################################################################################################################################
 # DEFINING SAMPLING FUNCTION 
@@ -62,6 +66,7 @@ FUN_SELECT_sites = function(ye
                             , firstOK = FALSE
                             , year.start, year.end ## fixed inputs !!
                             , samp.no_sites ## fixed inputs !!
+                            , constraint.nb_plots ## fixed inputs !!
                             , constraint.list ## fixed inputs !!
                             , constraint.no_sites_max ## fixed inputs !!
                             , constraint.notTogether ## fixed inputs !!
@@ -85,16 +90,26 @@ FUN_SELECT_sites = function(ye
     {
       num_sites = samp.no_sites
       probas = samp$PROB
-      if (ye %in% DT.add.year.constraint$YEAR)
+      sites = vector()
+      if (ye %in% DT.add.year.constraint2$YEAR)
       {
-        ind_ye = which(DT.add.year.constraint$YEAR == ye)
-        ind_si = which(samp$SITE %in% DT.add.year.constraint$SITES[ind_ye])
-        num_sites = unique(DT.add.year.constraint$NB_SITES[ind_ye])
+        ind_ye = which(DT.add.year.constraint2$YEAR == ye)
+        ind_si = which(samp$SITE %in% DT.add.year.constraint2$SITES[ind_ye])
+        num_sites = unique(DT.add.year.constraint2$NB_SITES[ind_ye])
         probas[-ind_si] = 0
       }
-      sites = sample(x = samp$SITE
-                     , size = num_sites
-                     , prob = probas)
+      if (ye %in% DT.add.year.constraint1$YEAR)
+      {
+        ind_ye = which(DT.add.year.constraint1$YEAR == ye)
+        ind_si = which(samp$SITE %in% DT.add.year.constraint1$SITES[ind_ye])
+        
+        sites = as.character(DT.add.year.constraint1$SITES[ind_ye])
+        num_sites = num_sites - length(ind_ye)
+        probas[ind_si] = 0
+      }
+      sites = c(sites, sample(x = samp$SITE
+                              , size = num_sites
+                              , prob = probas))
       
       cond.num = cond.notTogether = cond.plots = TRUE
       
@@ -116,7 +131,7 @@ FUN_SELECT_sites = function(ye
         }
       }
       ## Check combinations for number of plots constraint
-      if (sum(sites.plots[sites]) > 37)
+      if (sum(sites.plots[sites]) > constraint.nb_plots)
       {
         cond.plots = FALSE
       }
@@ -194,6 +209,7 @@ FUN_SELECT_sites = function(ye
                                , year.start = year.start
                                , year.end = year.end
                                , samp.no_sites = samp.no_sites
+                               , constraint.nb_plots = constraint.nb_plots
                                , constraint.list = constraint.list
                                , constraint.no_sites_max = constraint.no_sites_max
                                , constraint.notTogether = constraint.notTogether
@@ -276,6 +292,7 @@ FUN_SELECT_sites = function(ye
                               , year.start = year.start
                               , year.end = year.end
                               , samp.no_sites = samp.no_sites
+                              , constraint.nb_plots = constraint.nb_plots
                               , constraint.list = constraint.list
                               , constraint.no_sites_max = constraint.no_sites_max
                               , constraint.notTogether = constraint.notTogether
@@ -338,15 +355,52 @@ ui <- fluidPage(
                  "",
                  numericInput(inputId = "samp.no_sites"
                               , label = "Nombre de sites / an"
-                              , min = 5
+                              , min = 4
                               , max = 8
-                              , value = 6
+                              , value = 5
                               , step = 1
                  )
           )
         ),
         fluidRow(
           br()
+          , br()
+          , div(style="text-align:center;"
+                , p(em("Ajout d'une contrainte : sites à OBLIGATOIREMENT échantillonner une certaine année.")))
+          , column(6, numericInput(inputId = "spec1.year"
+                                   , label = "Année"
+                                   , value = 2016
+                                   , min = 2016
+                                   , max = 2080
+                                   , step = 1
+                                   , width = "100%"))
+          , column(6, selectInput(inputId = "spec1.sites"
+                                  , label = "Sites"
+                                  , choices = sites.names
+                                  , selected = NULL
+                                  , multiple = TRUE
+                                  , width = "100%"))
+        ),
+        fluidRow(
+          column(12,
+                 "",
+                 actionButton(inputId = "add.year.constraint1"
+                              , label = "Année spécifique"
+                              , icon = icon("plus")
+                              , width = "100%")
+          )
+        ),
+        fluidRow(
+          column(12,
+                 "",
+                 br(),
+                 tableOutput(outputId = "DT.add.year.constraint1"))
+        ),
+        fluidRow(
+          br()
+          , br()
+          , div(style="text-align:center;"
+                , p(em("Ajout d'une contrainte : changement du pool ou du nombre de sites à échantillonner une certaine année.")))
           , column(6, numericInput(inputId = "spec.year"
                                    , label = "Année"
                                    , value = 2016
@@ -362,19 +416,17 @@ ui <- fluidPage(
                                    , width = "100%"))
         ),
         fluidRow(
-          br()
-          , column(12, selectInput(inputId = "spec.sites"
-                                   , label = "Sites"
-                                   , choices = sites.names
-                                   , selected = sites.names
-                                   , multiple = TRUE
-                                   , width = "100%"))
+          column(12, selectInput(inputId = "spec.sites"
+                                 , label = "Sites"
+                                 , choices = sites.names
+                                 , selected = sites.names
+                                 , multiple = TRUE
+                                 , width = "100%"))
         ),
         fluidRow(
-          br(),
-          column(8,
+          column(12,
                  "",
-                 actionButton(inputId = "add.year.constraint"
+                 actionButton(inputId = "add.year.constraint2"
                               , label = "Année spécifique"
                               , icon = icon("plus")
                               , width = "100%")
@@ -384,7 +436,7 @@ ui <- fluidPage(
           column(12,
                  "",
                  br(),
-                 tableOutput(outputId = "DT.add.year.constraint"))
+                 tableOutput(outputId = "DT.add.year.constraint2"))
         )
       ),
       
@@ -393,6 +445,18 @@ ui <- fluidPage(
         style = HTML("border-width:0px; background-color: rgba(207, 214, 227, 0.5);"),
         
         h3("A. Contraintes d'échantillonnage"),
+        
+        p(em("Chaque site dispose d'un certain nombre de placettes.
+               Un nombre limite de placettes à échantillonner par an est fixé au préalable.")),
+        
+        selectInput(inputId = "constraint.nb_plots"
+                    , label = "Nombre de placettes MAX / an"
+                    , choices = c(37, 74)
+                    , selected = 37
+                    , multiple = FALSE
+                    , width = "100%"
+        ),
+        
         p(em("Les sites sont attribués aux différents partenaires impliqués.
                Un nombre limite de sites à échantillonner par an et par partenaire
                est fixé au préalable.")),
@@ -654,19 +718,38 @@ server <- function(input, output, session) {
   
   ####################################################################
   
-  get_DT.add.year.constraint = eventReactive(input$add.year.constraint, {
-    if (!is.na(input$spec.year) && nchar(input$spec.year) &&
-        !is.na(input$spec.no_sites) && nchar(input$spec.no_sites))
+  get_DT.add.year.constraint1 = eventReactive(input$add.year.constraint1, {
+    if (!is.na(input$spec1.year) && nchar(input$spec1.year))
     {
-      DT.add.year.constraint <<- rbind(DT.add.year.constraint
-                                       , data.frame(YEAR = input$spec.year
-                                                    , NB_SITES = input$spec.no_sites
-                                                    , SITES = input$spec.sites))
+      DT.add.year.constraint1 <<- rbind(DT.add.year.constraint1
+                                        , data.frame(YEAR = input$spec1.year
+                                                     , SITES = input$spec1.sites))
     }
   })
   
-  output$DT.add.year.constraint = renderTable({
-    TAB = get_DT.add.year.constraint()
+  output$DT.add.year.constraint1 = renderTable({
+    TAB = get_DT.add.year.constraint1()
+    if (!is.null(TAB) && nrow(TAB) > 0)
+    {
+      return(unique(TAB[, 1:2]))
+    }
+  })
+  
+  ####################################################################
+  
+  get_DT.add.year.constraint2 = eventReactive(input$add.year.constraint2, {
+    if (!is.na(input$spec.year) && nchar(input$spec.year) &&
+        !is.na(input$spec.no_sites) && nchar(input$spec.no_sites))
+    {
+      DT.add.year.constraint2 <<- rbind(DT.add.year.constraint2
+                                        , data.frame(YEAR = input$spec.year
+                                                     , NB_SITES = input$spec.no_sites
+                                                     , SITES = input$spec.sites))
+    }
+  })
+  
+  output$DT.add.year.constraint2 = renderTable({
+    TAB = get_DT.add.year.constraint2()
     if (!is.null(TAB) && nrow(TAB) > 0)
     {
       return(unique(TAB[, 1:2]))
@@ -681,11 +764,13 @@ server <- function(input, output, session) {
     PARAMS = data.frame(PARAMETRE = c("ANNEE_DEPART"
                                       , "ANNEE_FIN"
                                       , "NOMBRE_SITES_PAR_AN"
-                                      , "NOMBRE_SITES_MAX_PAR_PARTENAIRE")
+                                      , "NOMBRE_SITES_MAX_PAR_PARTENAIRE"
+                                      , "CONTRAINTE_PLACETTES_MAX_PAR_AND")
                         , VALEUR = c(input$year.range[1]
                                      , input$year.range[2]
                                      , input$samp.no_sites
-                                     , input$constraint.no_sites_max))
+                                     , input$constraint.no_sites_max
+                                     , input$constraint.nb_plots))
     for(grp in unique(INIT$Grp_Bota))
     {
       if (length(input[[paste0("constraint.", grp)]]) > 0)
@@ -866,6 +951,7 @@ server <- function(input, output, session) {
                                         <br/>
                                     <li><strong>période :</strong> ", year.start, " - ", year.end,"</li>
                                     <li><strong>nb de sites / an :</strong> ", input$samp.no_sites, "</li>
+                                    <li><strong>nb de placettes max / an :</strong> ", input$constraint.nb_plots, "</li>
                                     <br/>
                                     <li><strong>(i) diminution proba après échantillonnage :</strong> ", input$prob.decrease.sampThisYear, "</li>
                                     <br/>
@@ -906,6 +992,7 @@ server <- function(input, output, session) {
                                                          , year.start = year.start
                                                          , year.end = ye.end
                                                          , samp.no_sites = input$samp.no_sites
+                                                         , constraint.nb_plots = input$constraint.nb_plots
                                                          , constraint.list = constraint.list
                                                          , constraint.no_sites_max = input$constraint.no_sites_max
                                                          , constraint.notTogether = input$constraint.notTogether
