@@ -86,18 +86,32 @@ FUN_SELECT_sites = function(ye
     # cat("\n 1. Sites selection...")
     
     isThereProblem = TRUE
+    nbAttempts = 0
     while(isThereProblem)
     {
       num_sites = samp.no_sites
       probas = samp$PROB
+      if (nbAttempts > 3)
+      {
+        cat("\n NINJA ============== \n")
+        probas = probas + runif(length(probas), min = -0.1, max = 0.1)
+        probas = sapply(probas, function(x) max(0.01, x))
+      }
+      cat(" nbAttempts ", nbAttempts, "\n")
+      cat(" samp$PROB ", samp$PROB, "\n")
       sites = vector()
+      # cat(" num sites ", num_sites, "\n")
+      # cat(" sites ", sites, "\n")
       if (ye %in% DT.add.year.constraint2$YEAR)
       {
         ind_ye = which(DT.add.year.constraint2$YEAR == ye)
         ind_si = which(samp$SITE %in% DT.add.year.constraint2$SITES[ind_ye])
         num_sites = unique(DT.add.year.constraint2$NB_SITES[ind_ye])
         probas[-ind_si] = 0
+        # cat(" num sites ", num_sites, "\n")
+        # cat(" sites ", sites, "\n")
       }
+
       if (ye %in% DT.add.year.constraint1$YEAR)
       {
         ind_ye = which(DT.add.year.constraint1$YEAR == ye)
@@ -106,10 +120,18 @@ FUN_SELECT_sites = function(ye
         sites = as.character(DT.add.year.constraint1$SITES[ind_ye])
         num_sites = num_sites - length(ind_ye)
         probas[ind_si] = 0
+        samp$PROB[ind_si] = 1
+        # cat(" num sites ", num_sites, "\n")
+        # cat(" sites ", sites, "\n")
       }
+      cat(" probas ", probas, "\n")
       sites = c(sites, sample(x = samp$SITE
                               , size = num_sites
                               , prob = probas))
+      # if (ye %in% DT.add.year.constraint1$YEAR)
+      # {
+      #   cat(" sites ", sites, "\n")
+      # }
       
       cond.num = cond.notTogether = cond.plots = TRUE
       
@@ -141,8 +163,9 @@ FUN_SELECT_sites = function(ye
         isThereProblem = FALSE
       } else
       {
-        # cat(" ", cond.num, " ", cond.notTogether, " ", cond.plots, "\n")
-        cat(" >> Sampling did not fullfilled conditions, resampling... \n")
+        cat(" ", cond.num, " ", cond.notTogether, " ", cond.plots, "\n")
+        # cat(" >> Sampling did not fullfilled conditions, resampling... \n")
+        nbAttempts = nbAttempts + 1
       }
     }
     
@@ -674,7 +697,10 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel(title = "Sites sélectionnés"
                  , value = "selectionsite"
-                 , dataTableOutput(outputId = "RES_SEL")), 
+                 # , wellPanel(style = HTML("border-width:0px; background-color:overflow-x:scroll;") # max-width:100%;")
+                             , dataTableOutput(outputId = "RES_SEL", width = "100%")
+                 # )
+        ), 
         tabPanel(title = "Graphiques"
                  , value = "graphics"
                  , br()
@@ -1056,11 +1082,13 @@ server <- function(input, output, session) {
     
     if (!is.null(RES) && nrow(RES) > 0)
     {
+      no_sites = input$samp.no_sites
       RES.split = split(RES, RES$YEAR)
+      no_sites = max(sapply(RES.split, nrow))
       RES = foreach(x = RES.split, .combine = "rbind") %do%
         {
-          eval(parse(text = paste0("res = data.frame(",paste0("SITE", 1:input$samp.no_sites
-                                                              ," = x$SITE[", 1:input$samp.no_sites, "]", collapse = ",")
+          eval(parse(text = paste0("res = data.frame(",paste0("SITE", 1:no_sites
+                                                              ," = x$SITE[", 1:no_sites, "]", collapse = ",")
                                    ,")")))
           return(res)
         }
