@@ -22,7 +22,7 @@ library(xlsx)
 DT.add.year.constraint1 <- data.frame()
 DT.add.year.constraint2 <- data.frame()
 
-INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F)
+INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F, encoding = "UTF-8")
 INIT.years = sort(unique(INIT$Yr_lancement))
 
 sites.names = INIT$Gradient
