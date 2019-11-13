@@ -1,0 +1,36 @@
+ANNEE	SITE1	SITE2	SITE3	SITE4	SITE5	SITE6	SITE7	SITE8	SITE9
+2016	Anterne	Chaillol	Chamrousse	Loriaz	Ristolas				
+2017	Lautaret	Valloire	Bauges	Caramagne	Vanoise	Argentiere	Lauvitel		
+2018	Bonette	Clarée	Devoluy Nord	Devoluy Sud	Plan de l'Aiguille	Ventoux Sud			
+2019	Mounier	Rachais Chamechaude	Ventoux Nord	Cervières 					
+2020	Anterne	Chamrousse	Bonette	AvenirA (Moucherotte)	AvenirB (Seez)	AvenirC (pyr 1)	AvenirD (pyr 2)	Plan de l'Aiguille	Loriaz
+2021	Chaillol	Ristolas	Caramagne	AvenirA (Moucherotte)	AvenirD (pyr 2)				
+2022	Lauvitel	Caramagne	Argentiere	Anterne	Valloire				
+2023	Bauges	Vanoise	Chaillol	Chamrousse	Lautaret				
+2024	Devoluy Sud	Chaillol	Clarée	Ventoux Sud	Devoluy Nord				
+2025	Devoluy Sud	Cervières 	Rachais Chamechaude	Mounier	Ventoux Nord				
+2026	Loriaz	Plan de l'Aiguille	AvenirC (pyr 1)	Bonette	AvenirB (Seez)				
+2027	Ristolas	Valloire	AvenirA (Moucherotte)	Devoluy Nord	AvenirD (pyr 2)				
+2028	Argentiere	Caramagne	Lauvitel	Mounier	Anterne				
+2029	Bauges	Loriaz	Chamrousse	Vanoise	Lautaret				
+2030	Clarée	Cervières 	AvenirB (Seez)	Ventoux Sud	Chaillol				
+2031	Devoluy Sud	Lauvitel	Ventoux Nord	Rachais Chamechaude	Lautaret				
+2032	AvenirC (pyr 1)	Bonette	Bauges	Argentiere	Plan de l'Aiguille				
+2033	AvenirA (Moucherotte)	Ristolas	Valloire	Devoluy Nord	AvenirD (pyr 2)				
+2034	Caramagne	Anterne	Ristolas	Bauges	Mounier				
+2035	Mounier	Vanoise	Loriaz	Chamrousse	Bauges				
+2036	Clarée	Chaillol	Cervières 	Ventoux Sud	AvenirB (Seez)				
+2037	Ventoux Nord	Devoluy Sud	Rachais Chamechaude	Lautaret	Lauvitel				
+2038	AvenirC (pyr 1)	Argentiere	Ventoux Nord	Bonette	Plan de l'Aiguille				
+2039	AvenirD (pyr 2)	Clarée	AvenirA (Moucherotte)	Devoluy Nord	Valloire				
+2040	Caramagne	Anterne	Cervières 	Ristolas	AvenirC (pyr 1)				
+2041	Mounier	Loriaz	Vanoise	Bauges	Chamrousse				
+2042	Plan de l'Aiguille	Ventoux Sud	AvenirB (Seez)	Ristolas	Chaillol				
+2043	Rachais Chamechaude	Lautaret	Valloire	Lauvitel	Devoluy Sud				
+2044	Bonette	Lauvitel	Valloire	Argentiere	Ventoux Nord				
+2045	Devoluy Nord	Clarée	Plan de l'Aiguille	AvenirD (pyr 2)	AvenirA (Moucherotte)				
+2046	AvenirC (pyr 1)	Anterne	Cervières 	Caramagne	Mounier				
+2047	Chamrousse	Ventoux Sud	Vanoise	Loriaz	Bauges				
+2048	AvenirB (Seez)	Rachais Chamechaude	Ristolas	Lautaret	Chaillol				
+2049	Loriaz	Rachais Chamechaude	Bonette	Devoluy Sud	AvenirD (pyr 2)				
+2050	Ventoux Nord	Valloire	Devoluy Nord	Lauvitel	Argentiere				
