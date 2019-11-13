@@ -81,12 +81,13 @@ FUN_SELECT_sites = function(ye
 )
 {
   # cat("\n *-*-*-*-*-*-*-* ", ye, " *-*-*-*-*-*-*-* \n")
+  nbAttempts = 0
   if (!file.exists(paste0("SAUVEGARDE_ANNEE_", ye, ".RData")))
   {
     # cat("\n 1. Sites selection...")
     
     isThereProblem = TRUE
-    nbAttempts = 0
+    # nbAttempts = 0
     while(isThereProblem)
     {
       num_sites = samp.no_sites
@@ -95,6 +96,12 @@ FUN_SELECT_sites = function(ye
       {
         cat("\n NINJA ============== \n")
         probas = probas + runif(length(probas), min = -0.1, max = 0.1)
+        probas = sapply(probas, function(x) max(0.01, x))
+      }
+      if (nbAttempts > 100)
+      {
+        cat("\n MEGA NINJA ============== \n")
+        probas = probas + runif(length(probas), min = -0.5, max = 0.5)
         probas = sapply(probas, function(x) max(0.01, x))
       }
       cat(" nbAttempts ", nbAttempts, "\n")
