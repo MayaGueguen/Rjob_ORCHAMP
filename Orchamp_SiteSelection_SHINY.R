@@ -599,6 +599,13 @@ ui <- fluidPage(
         ),
         
         p(em("(iv) si le site ne valide pas les conditions à long-terme.")),
+        numericInput(inputId = "year.win"
+                     , label = "Fenêtre de validation (nb d'années)"
+                     , min = 5
+                     , max = 10
+                     , value = 6
+                     , step = 1
+        ),
         numericInput(inputId = "prob.decrease.notWorking"
                      , label = "Diminution après échantillonnage (%)"
                      , min = 0.1
@@ -793,7 +800,6 @@ server <- function(input, output, session) {
   get_allParams = eventReactive(input$refresh, {
     cat("\n >> SAVING : getting sampling parameters...\n")
     
-    year.win = 6
     PARAMS = data.frame(PARAMETRE = c("ANNEE_DEPART"
                                       , "ANNEE_FIN"
                                       , "NOMBRE_SITES_PAR_AN"
@@ -824,14 +830,14 @@ server <- function(input, output, session) {
                                                     , "FENETRE_CHECK_FREQUENCE"
                                                     , "SEUIL_CHECK_FREQUENCE"
                                                     , "PROB_DIMINUTION_CHECK_FREQUENCE_INCORRECT")
-                                      , VALEUR = c(input$noXYears
-                                                   , input$prob.increase.sampXYears
-                                                   , input$prob.decrease.sampThisYear
-                                                   , input$noSuccYears
-                                                   , input$prob.decrease.sampSuccYears
-                                                   , year.win
-                                                   , floor((input$year.range[2] - input$year.range[1]) / year.win)
-                                                   , input$prob.decrease.notWorking)))
+                                      , VALEUR = c(as.numeric(input$noXYears)
+                                                   , as.numeric(input$prob.increase.sampXYears)
+                                                   , as.numeric(input$prob.decrease.sampThisYear)
+                                                   , as.numeric(input$noSuccYears)
+                                                   , as.numeric(input$prob.decrease.sampSuccYears)
+                                                   , as.numeric(input$year.win)
+                                                   , floor((input$year.range[2] - input$year.range[1]) / input$year.win)
+                                                   , as.numeric(input$prob.decrease.notWorking))))
     
     if (input$saveResults)
     {
@@ -841,7 +847,7 @@ server <- function(input, output, session) {
   })
   
   get_params1 = reactive({
-    year.win = 6
+    year.win = input$year.win
     params = paste0(input$year.range[1], "_"
                     , input$year.range[2], "_"
                     , year.win, "_"
@@ -939,7 +945,8 @@ server <- function(input, output, session) {
     year.start = input$year.range[1]
     year.end = input$year.range[2]
     samp.years = seq(year.start, year.end, 1)
-    year.win = ifelse((year.end - year.start) < 6, year.end - year.start, 6)
+    year.win = ifelse((year.end - year.start) < input$year.win, year.end - year.start, input$year.win)
+    
     
     prob.increase.sampXYears = 1 + input$prob.increase.sampXYears
     prob.decrease.sampThisYear = 1 - input$prob.decrease.sampThisYear
@@ -994,6 +1001,7 @@ server <- function(input, output, session) {
                                     <li><strong>(iii) seuil années non-échantillonnées :</strong> ", input$noXYears, "</li>
                                     <li><strong>(iii) augmentation proba après seuil :</strong> ", input$prob.increase.sampXYears, "</li>
                                     <br/>
+                                    <li><strong>(iv) fenêtre de validation (nb d'années) :</strong> ", input$year.win, "</li>
                                     <li><strong>(iv) diminution proba conditions long terme :</strong> ", input$prob.decrease.notWorking, "</li>
                                     </ul>"))
                           , title = HTML("Calcul d'un scénario d'échantillonnage")
