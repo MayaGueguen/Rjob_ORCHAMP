@@ -10,7 +10,8 @@ library(xlsx)
 #############################################################################################################
 
 ## READ FILE containing ORCHAMP site informations about initialisation
-INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx", sheetIndex = 1, stringsAsFactors = F)
+INIT = read.xlsx(file = "ORCHAMP_gradients_INITIALISATION.xlsx"
+                 , sheetIndex = 1, stringsAsFactors = FALSE, encoding = "UTF-8")
 INIT.years = sort(unique(INIT$Yr_lancement))
 
 ## DEFINE RULES to select sites
@@ -28,7 +29,7 @@ noXYears = 2
 ##  sampling probability
 
 samp.INIT = list()
-for(ye in as.character(INIT.years))
+for(ye in INIT.years)
 {
   cat(" ", ye)
   
@@ -79,7 +80,7 @@ for(ye in as.character(INIT.years))
       }
     }
   }
-  samp.INIT[[ye]] = samp.sites_tab
+  samp.INIT[[as.character(ye)]] = samp.sites_tab
 }
 
 
